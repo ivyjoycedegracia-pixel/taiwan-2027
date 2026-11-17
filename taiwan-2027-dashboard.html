@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Taiwan 2027 Budget Dashboard</title>
+  <style>
+    :root {
+      --ink: var(--foreground, #20352e);
+      --muted: var(--muted-foreground, #4e655a);
+      --line: var(--border, #cfded6);
+      --surface: var(--secondary, #f0f6f1);
+      --budget-accent: var(--primary, #176149);
+      --total-bg: #155641;
+      --total-ink: #fff;
+      --total-soft: #d5ece1;
+      --radius: 12px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --ink: var(--foreground, #e4f2eb);
+        --muted: var(--muted-foreground, #adc6b9);
+        --line: var(--border, #3a584a);
+        --surface: var(--secondary, #1b2d24);
+        --budget-accent: var(--primary, #87d4b1);
+        --total-bg: #174c39;
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html { background: transparent; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font: 14px/1.5 var(--font-sans, system-ui, sans-serif);
+    }
+
+    main { max-width: 1050px; margin-inline: auto; }
+    body.standalone { padding: clamp(16px, 4vw, 48px); }
+
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: clamp(23px, 4vw, 34px); line-height: 1.15; letter-spacing: -.035em; }
+    h2 { font-size: 19px; line-height: 1.25; letter-spacing: -.015em; }
+    a { color: var(--budget-accent); text-underline-offset: 3px; }
+    :focus-visible { outline: 2px solid var(--budget-accent); outline-offset: 3px; }
+    [hidden] { display: none !important; }
+
+    .tabs {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 4px;
+      margin: 18px 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 4px;
+      background: var(--surface);
+    }
+
+    .tab {
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 8px 4px;
+      min-height: 44px;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-weight: 650;
+      cursor: pointer;
+    }
+
+    .tab:hover { color: var(--budget-accent); }
+    .tab[aria-selected="true"] {
+      border-color: var(--total-bg);
+      color: var(--total-ink);
+      background: var(--total-bg);
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .total, .largest { padding: 16px; border-radius: var(--radius); }
+    .total {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      background: var(--total-bg);
+      color: var(--total-ink);
+    }
+
+    .total p { color: var(--total-soft); font-weight: 600; }
+    .total .amount {
+      margin: 3px 0 2px;
+      line-height: 1.1;
+      font-size: clamp(27px, 5vw, 42px);
+      letter-spacing: -.04em;
+      font-weight: 750;
+    }
+
+    .largest { border: 1px solid var(--line); background: var(--surface); }
+    .largest h3 { font-size: 13px; margin-bottom: 8px; }
+    .cost-bars { display: grid; gap: 7px; padding: 0; margin: 0; list-style: none; }
+    .cost-label { display: flex; gap: 10px; justify-content: space-between; font-size: 12px; }
+    .track { display: block; height: 4px; margin-top: 3px; background: var(--line); border-radius: 4px; }
+    .bar { display: block; height: 100%; border-radius: inherit; background: #369b73; }
+
+    .amount { font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .breakdown-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+    .row-count { color: var(--muted); font-size: 12px; text-align: right; }
+    .table-controls { display: flex; align-items: end; gap: 12px; margin-top: 12px; }
+    .filter-control { flex: 1; min-width: 0; max-width: 220px; }
+    .control-label { display: block; margin-bottom: 4px; color: var(--muted); font-size: 12px; font-weight: 650; }
+    .table-controls select, .sort-button {
+      min-height: 44px;
+      border: 1px solid color-mix(in srgb, var(--line) 55%, var(--muted));
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink);
+      font: inherit;
+      cursor: pointer;
+    }
+    .table-controls select { width: 100%; padding: 6px 9px; }
+    .compact-sort { display: none; }
+    .sort-buttons { display: flex; gap: 5px; }
+    .sort-button { min-width: 44px; padding: 0 8px; font-size: 20px; }
+    .sort-button[aria-pressed="true"] { background: var(--total-bg); color: var(--total-ink); }
+    .sort-button:disabled { color: var(--muted); opacity: .65; cursor: default; }
+    .table-frame { margin-top: 12px; border: 1px solid var(--line); border-radius: var(--radius); }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 13px; }
+    .item-col { width: 20%; }
+    .detail-col { width: 32%; }
+    .quote-col { width: 17%; }
+    .purchase-col { width: 13%; }
+    .cost-col { width: 18%; }
+
+    th, td { padding: 10px 12px; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+    tr + tr, tbody { border-top: 1px solid var(--line); }
+    thead th { padding: 0; vertical-align: middle; background: var(--surface); color: var(--muted); font-size: 12px; }
+    thead th:first-child { border-top-left-radius: 11px; }
+    thead th:last-child { border-top-right-radius: 11px; }
+    .column-sort {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      width: 100%;
+      min-height: 44px;
+      border: 0;
+      border-radius: inherit;
+      padding: 7px 8px;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+    .column-sort:hover, th[aria-sort] .column-sort { color: var(--budget-accent); }
+    .column-sort:focus-visible { outline-offset: -3px; }
+    .sort-arrow { flex: none; font-size: 14px; line-height: 1; }
+    .cost .column-sort { justify-content: flex-end; text-align: right; }
+    tbody th { font-weight: 650; }
+    .detail { white-space: pre-line; }
+    .purchase { color: var(--muted); }
+    .cost { text-align: right; font-weight: 700; }
+    td[rowspan] { vertical-align: middle; }
+    .shared-fare { color: var(--muted); font-size: 11px; font-weight: 500; }
+    .row-note { display: block; margin-top: 5px; color: var(--budget-accent); font-size: 12px; }
+    .mobile-meta { display: none; }
+    footer { margin-top: 15px; font-size: 12px; color: var(--muted); }
+
+    @media (max-width: 630px) {
+      .table-controls { flex-wrap: wrap; }
+      .filter-control { flex-basis: 126px; }
+      .compact-sort { display: flex; align-items: end; gap: 5px; flex: 1 0 240px; }
+      .compact-sort label { flex: 1; min-width: 0; }
+      .item-col { width: 31%; }
+      .detail-col { width: 43%; }
+      .cost-col { width: 26%; }
+      .quote-col, .purchase-col, .quote, .purchase { display: none; }
+      .mobile-meta { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; }
+      tbody th, td { padding: 8px; }
+    }
+
+    @media (max-width: 480px) {
+      .summary { grid-template-columns: minmax(0, 1fr); gap: 8px; margin-bottom: 20px; }
+      .total, .largest { padding: 13px 14px; }
+      .total { flex-direction: row; gap: 8px; align-items: baseline; justify-content: space-between; flex-wrap: wrap; }
+      .total .amount { margin: 0; font-size: 28px; }
+      .tab, table { font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Taiwan 2027 Budget</h1>
+    <div class="tabs" role="tablist" aria-label="Budget tables"></div>
+    <div id="panels"></div>
+    <footer>
+      Workbook snapshot · <a href="https://docs.google.com/spreadsheets/d/12cXEUV-BxXsbQnNhny1L2muF6mKzNRWY9QjWbkK0Ppk/edit?usp=sharing" target="_blank" rel="noopener noreferrer">Open source spreadsheet</a>
+    </footer>
+  </main>
+
+  <template id="panel-template">
+    <section role="tabpanel" tabindex="0" hidden>
+      <div class="summary">
+        <div class="total">
+          <p>Total per person</p>
+          <strong class="amount"></strong>
+        </div>
+        <div class="largest">
+          <h3>Largest costs per person</h3>
+          <ul class="cost-bars"></ul>
+        </div>
+      </div>
+      <div class="breakdown-heading">
+        <h2>Budget breakdown</h2>
+        <p class="row-count" role="status"></p>
+      </div>
+      <div class="table-controls">
+        <label class="filter-control">
+          <span class="control-label">Where to buy</span>
+          <select class="purchase-filter">
+            <option value="">All sources</option>
+          </select>
+        </label>
+        <div class="compact-sort" role="group" aria-label="Table sort">
+          <label>
+            <span class="control-label">Sort by</span>
+            <select class="sort-field">
+              <option value="">Sheet order</option>
+            </select>
+          </label>
+          <div class="sort-buttons">
+            <button type="button" class="sort-button" data-direction="ascending" aria-label="Sort ascending" aria-pressed="false" title="Sort ascending">↑</button>
+            <button type="button" class="sort-button" data-direction="descending" aria-label="Sort descending" aria-pressed="false" title="Sort descending">↓</button>
+          </div>
+        </div>
+      </div>
+      <div class="table-frame">
+        <table>
+          <colgroup>
+            <col class="item-col">
+            <col class="detail-col">
+            <col class="quote-col">
+            <col class="purchase-col">
+            <col class="cost-col">
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col">Item</th>
+              <th scope="col">Details</th>
+              <th scope="col" class="quote">Total / offer</th>
+              <th scope="col" class="purchase">Where to buy</th>
+              <th scope="col" class="cost">Per person</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </template>
+
+  <script type="application/json" id="workbook-data">
+[{"id":"five","name":"5 pax","total":68813.704,"mergedCostRow":12,"rows":[["Travel Tax","Egov for convenience",null,"Egov",1620.0,null],["Airfare","Starlux",102225.0,"Starlux",20445.0,null],["Ximending Accomodation","Agoda Ximending Emei F Apartment",43844.64,"Agoda",8768.928,null],["ESim/Sim Card Klook","Unlimited for 11 days - Klook",null,"Klook",1834.0,null],["Airport Transfer KLOOK","Airport to Ximending\nEconomy 9 seater - 7 adults and 7 large suitcase",2116.0,"Klook",423.2,null],["Travel Insurance - GCASH","1 month-59 yo",4040.0,"Gcash",808,null],["Easycard","Buy Easy Card and load 400 - (rates from Klook)",null,"Klook",975.0,null],["Mala Hotpot","Dinner Mala Hotpot","NT$878","Onsite",1800.0,null],["Zoo+Maokong Gondola","Zoo+Maokong Gondola",null,"Klook",773.0,null],["Snow Mountain","NANTOU TOUR - Joiner\n* Swiss Garden\n* Old England\n* Qingjing Farm\n* Hehuanshan Mt. (Snow Mt)","NT$1500","Jenna",2905.0,null],["Beitou+Yanmingshan","Taipei Beitou Hot Sping and Yangmingshan DayTour","50% Discount","Klook",1742.0,null],["Wulai","Ride Wulai Scenic Train and stop at Wulai Waterfalls",null,"Klook",97.0,null],["Wulai","Ride Cable Car to Hsein Resort",null,"Klook",572.0,null],["Wulai","Yun Hsein Resort (Klook)",null,"Klook",null,null],["Wulai","Ride Wulai Scenic Train back to old street",null,"Klook",97.0,null],["Northcoast Tour","Tiaoshi Coast Bus Stop\nYehliu\nShifen Old Street\nGolden Waterfalls\nYin and Yang Sea\nShuinandong\nJioufen Old Street","50% Discount","Klook",1454.0,null],["HSR","HSR to Taichung","50% Discount","Klook",570.0,null],["HSR","HSR from Taichung to Chiayi","50% Discount","Klook",570.0,null],["HSR","HSR from Chiayi to Ximending","50% Discount","Klook",306.5,null],["Alishan","Alishan from Taichung Tour ",null,"Klook",2630.0,null],["Taipei 101","Taipei 101",null,"Klook",1899.0,null],[null,"Easy Card additional Load","additional 600 recommended by CHATGPT","7 Nov 2026",1200.0,null],[null,"Food","650NTD per day","Onsite",12500.0,null],[null,"Ichiran Ramen","estimated","Onsite",2000.0,null],["TAICHUNG Accomodation","Agoda Palmer Hotel 2nights",14120.38,"Agoda",2824.076,null]]},{"id":"regular","name":"7 pax Regular","total":66615.39714,"mergedCostRow":12,"rows":[["Travel Tax","Egov for convenience",null,"Egov",1620.0,null],["Airfare","Starlux",102225.0,"Starlux",20445.0,null],["Ximending Accomodation","Agoda Ximending Emei F Apartment",53788,"Agoda",7684.0,"* add 7684 each for Sharee and Kevin too"],["ESim/Sim Card Klook","Unlimited for 11 days - Klook",null,"Klook",1834.0,null],["Airport Transfer KLOOK","Airport to Ximending\nEconomy 9 seater - 7 adults and 7 large suitcase",2116.0,"Klook",423.2,null],["Travel Insurance - GCASH","1 month-59 yo",4040.0,"Gcash",808,null],["Easycard","Buy Easy Card and load 400 - (rates from Klook)",null,"Klook",975.0,null],["Mala Hotpot","Dinner Mala Hotpot","NT$878","Onsite",1800.0,null],["Zoo+Maokong Gondola","Zoo+Maokong Gondola",null,"Klook",773.0,null],["Snow Mountain","NANTOU TOUR - Joiner\n* Swiss Garden\n* Old England\n* Qingjing Farm\n* Hehuanshan Mt. (Snow Mt)","NT$1500","Jenna",2905.0,null],["Beitou+Yanmingshan","Taipei Beitou Hot Sping and Yangmingshan DayTour","50% Discount","Klook",1742.0,null],["Wulai","Ride Wulai Scenic Train and stop at Wulai Waterfalls",null,"Klook",97.0,null],["Wulai","Ride Cable Car to Hsein Resort",null,"Klook",572.0,null],["Wulai","Yun Hsein Resort (Klook)",null,"Klook",null,null],["Wulai","Ride Wulai Scenic Train back to old street",null,"Klook",97.0,null],["Northcoast Tour","Tiaoshi Coast Bus Stop\nYehliu\nShifen Old Street\nGolden Waterfalls\nYin and Yang Sea\nShuinandong\nJioufen Old Street","50% Discount","Klook",1454.0,null],["HSR","HSR to Taichung","50% Discount","Klook",570.0,null],["HSR","HSR to Ximending","50% Discount","Klook",570.0,null],["Alishan","Alishan from Taichung Tour ",null,"Klook",2630.0,null],["Taipei 101","Taipei 101",null,"Klook",1899.0,null],[null,"Easy Card additional Load","additional 600 recommended by CHATGPT","7 Nov 2026",1200.0,null],[null,"Food","650NTD per day","Onsite",12500.0,null],[null,"Ichiran Ramen","estimated","Onsite",2000.0,null],["TAICHUNG Accomodation","Agoda Palmer Hotel 2nights",14120.38,"Agoda",2017.197143,"* add 7684 each for Sharee and Kevin too"]]},{"id":"senior","name":"7 pax Senior","total":57722.2,"mergedCostRow":12,"rows":[["Travel Tax","Egov for convenience",null,"Egov",1620.0,null],["Airfare","Starlux",102225.0,"Starlux",20445.0,null],[null,null,null,null,null,null],["ESim/Sim Card Klook","Unlimited for 11 days - Klook",null,"Klook",1834.0,null],["Airport Transfer KLOOK","Airport to Ximending\nEconomy 9 seater - 7 adults and 7 large suitcase",2116.0,"Klook",423.2,null],["Travel Insurance - GCASH","60-69 yo",3232.0,"Gcash",1616,null],["Easycard","Buy Easy Card and load 400 - (rates from Klook)",null,"Klook",975.0,null],["Mala Hotpot","Dinner Mala Hotpot","NT$878","Onsite",1800.0,null],["Zoo+Maokong Gondola","Zoo+Maokong Gondola",null,"Klook",773.0,null],["Snow Mountain","NANTOU TOUR - Joiner\n* Swiss Garden\n* Old England\n* Qingjing Farm\n* Hehuanshan Mt. (Snow Mt)","NT$1500","Jenna",2905.0,null],["Beitou+Yanmingshan","Taipei Beitou Hot Sping and Yangmingshan DayTour","50% Discount","Klook",1742.0,null],["Wulai","Ride Wulai Scenic Train and stop at Wulai Waterfalls",null,"Klook",97.0,null],["Wulai","Ride Cable Car to Hsein Resort",null,"Klook",572.0,null],["Wulai","Yun Hsein Resort (Klook)",null,"Klook",null,null],["Wulai","Ride Wulai Scenic Train back to old street",null,"Klook",97.0,null],["Northcoast Tour","Tiaoshi Coast Bus Stop\nYehliu\nShifen Old Street\nGolden Waterfalls\nYin and Yang Sea\nShuinandong\nJioufen Old Street","50% Discount","Klook",1454.0,null],["HSR","HSR to Taichung","50% Discount","Klook",570.0,null],["HSR","HSR to Ximending","50% Discount","Klook",570.0,null],["Alishan","Alishan from Taichung Tour ",null,"Klook",2630.0,null],["Taipei 101","Taipei 101",null,"Klook",1899.0,null],[null,"Easy Card additional Load","additional 600 recommended by CHATGPT","7 Nov 2026",1200.0,null],[null,"Food","650NTD per day","Onsite",12500.0,null],[null,"Ichiran Ramen","estimated","Onsite",2000.0,null]]}]
+  </script>
+  <script>
+    const theme = getComputedStyle(document.documentElement);
+    if (window.top === window && !theme.getPropertyValue('--background').trim()) {
+      document.body.classList.add('standalone');
+    }
+
+    const tables = JSON.parse(document.querySelector('#workbook-data').textContent);
+    const currency = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' });
+    const textCollator = new Intl.Collator('en', { sensitivity: 'base', numeric: true });
+    const tabs = [];
+    const panels = [];
+
+    function element(tag, content = '', className = '') {
+      const node = document.createElement(tag);
+      node.textContent = content ?? '';
+      node.className = className;
+      return node;
+    }
+
+    function formatValue(value) {
+      return typeof value === 'number' ? currency.format(value) : value;
+    }
+
+    function addLargestCosts(container, table) {
+      const largest = table.rows.filter(row => typeof row[4] === 'number')
+        .sort((a, b) => b[4] - a[4]).slice(0, 3);
+      for (const [item, detail, , , cost] of largest) {
+        const row = element('li');
+        const label = element('div', '', 'cost-label');
+        label.append(element('span', item || detail), element('strong', currency.format(cost), 'amount'));
+        const track = element('span', '', 'track');
+        const bar = element('span', '', 'bar');
+        track.setAttribute('aria-hidden', 'true');
+        bar.style.width = (cost / table.total * 100) + '%';
+        track.append(bar);
+        row.append(label, track);
+        container.append(row);
+      }
+    }
+
+    function makeBudgetRow(values) {
+      const [item, details, quote, purchase, cost, note] = values;
+      const row = element('tr');
+      const title = element(item ? 'th' : 'td', item);
+      if (item) title.scope = 'row';
+      const detail = element('td');
+      detail.append(element('span', details, 'detail'));
+      if (quote != null) detail.append(element('span', 'Total / offer: ' + formatValue(quote), 'mobile-meta'));
+      if (purchase != null) detail.append(element('span', 'Where to buy: ' + purchase, 'mobile-meta'));
+      if (note) detail.append(element('span', note, 'row-note'));
+
+      const quoteCell = element('td', formatValue(quote), 'quote');
+      quoteCell.classList.toggle('amount', typeof quote === 'number');
+      row.append(title, detail, quoteCell, element('td', purchase, 'purchase'), element('td', formatValue(cost), 'cost amount'));
+      return row;
+    }
+
+    function compareCells(a, b, sign) {
+      if (a === null || b === null) return Number(a === null) - Number(b === null);
+      const aIsNumber = typeof a === 'number';
+      const bIsNumber = typeof b === 'number';
+      if (aIsNumber !== bIsNumber) return aIsNumber ? -1 : 1;
+      return sign * (aIsNumber ? a - b : textCollator.compare(a, b));
+    }
+
+    function connectBudgetTable(panel, table) {
+      const filter = panel.querySelector('.purchase-filter');
+      const sortField = panel.querySelector('.sort-field');
+      const sortButtons = panel.querySelectorAll('.sort-button');
+      const headers = [...panel.querySelectorAll('thead th')];
+      const rowCount = panel.querySelector('.row-count');
+      const body = panel.querySelector('tbody');
+      const rows = table.rows.map(values => ({ values, node: makeBudgetRow(values) }));
+      const fare = rows[table.mergedCostRow];
+      const continuation = rows[table.mergedCostRow + 1];
+      const fareCell = fare.node.lastElementChild;
+      const sharedCell = continuation.node.lastElementChild;
+      sharedCell.classList.replace('amount', 'shared-fare');
+      sharedCell.textContent = 'Shared fare';
+      sharedCell.title = 'Included in the ' + fareCell.textContent + ' Wulai fare';
+
+      const sources = [...new Set(rows.map(row => row.values[3]))];
+      const choices = sources.filter(source => source !== null).sort(textCollator.compare);
+      if (sources.includes(null)) choices.push(null);
+      for (const [index, source] of choices.entries()) {
+        filter.add(new Option(source ?? 'No source listed', index));
+      }
+
+      let sortColumn = '';
+      let direction = '';
+      const columns = headers.map((header, index) => {
+        const key = String(index);
+        const label = header.textContent;
+        const button = element('button', label, 'column-sort');
+        button.type = 'button';
+        button.setAttribute('aria-label', label);
+        const arrow = element('span', '↕', 'sort-arrow');
+        arrow.setAttribute('aria-hidden', 'true');
+        button.append(arrow);
+        header.replaceChildren(button);
+        sortField.add(new Option(label, key));
+        button.addEventListener('click', () => {
+          if (sortColumn !== key) setSort(key, 'ascending');
+          else if (direction === 'ascending') setSort(key, 'descending');
+          else setSort('');
+        });
+        return { header, key, label, button, arrow };
+      });
+
+      function updateRows() {
+        const selection = filter.value;
+        const displayed = rows.filter(row => selection === '' || row.values[3] === choices[selection]);
+        if (sortColumn !== '') {
+          const sign = direction === 'ascending' ? 1 : -1;
+          const sortValue = row => sortColumn === '4' && row === continuation
+            ? fare.values[4]
+            : row.values[sortColumn];
+          displayed.sort((a, b) => compareCells(sortValue(a), sortValue(b), sign));
+        }
+
+        // Details sorting can separate the two rows covered by a single fare.
+        const fareIndex = displayed.indexOf(fare);
+        const joined = fareIndex >= 0 && displayed[fareIndex + 1] === continuation;
+        fareCell.rowSpan = joined ? 2 : 1;
+        if (joined) sharedCell.remove();
+        else continuation.node.append(sharedCell);
+
+        body.replaceChildren(...displayed.map(row => row.node));
+        const count = displayed.length;
+        const label = count === rows.length ? `${count} items` : `${count} of ${rows.length} items`;
+        if (rowCount.textContent !== label) rowCount.textContent = label;
+      }
+
+      function setSort(column, nextDirection = '') {
+        sortColumn = column;
+        direction = nextDirection;
+        sortField.value = column;
+        for (const { header, key, label, button, arrow } of columns) {
+          const active = key === column;
+          if (active) header.setAttribute('aria-sort', direction);
+          else header.removeAttribute('aria-sort');
+          arrow.textContent = active ? (direction === 'ascending' ? '↑' : '↓') : '↕';
+          let nextAction = 'Sort ' + label + ' ascending';
+          if (active) {
+            nextAction = direction === 'ascending' ? 'Sort ' + label + ' descending' : 'Restore sheet order';
+          }
+          button.title = nextAction;
+        }
+        for (const control of sortButtons) {
+          control.disabled = column === '';
+          const active = control.dataset.direction === direction;
+          control.setAttribute('aria-pressed', active);
+          control.title = active ? 'Restore sheet order' : control.getAttribute('aria-label');
+        }
+        updateRows();
+      }
+
+      filter.addEventListener('change', updateRows);
+      sortField.addEventListener('change', () => {
+        if (sortField.value === '') setSort('');
+        else setSort(sortField.value, 'ascending');
+      });
+      for (const button of sortButtons) {
+        button.addEventListener('click', () => {
+          const next = button.dataset.direction;
+          if (next === direction) setSort('');
+          else setSort(sortColumn, next);
+        });
+      }
+      setSort('');
+    }
+
+    function activateTab(index, focus = false) {
+      tabs.forEach((tab, position) => {
+        const selected = position === index;
+        tab.setAttribute('aria-selected', selected);
+        tab.tabIndex = selected ? 0 : -1;
+        panels[position].hidden = !selected;
+      });
+      if (focus) tabs[index].focus();
+      if (tabList.getBoundingClientRect().top <= 0) window.scrollTo(0, 0);
+    }
+
+    const tabList = document.querySelector('.tabs');
+    const panelList = document.querySelector('#panels');
+    const template = document.querySelector('#panel-template');
+
+    tables.forEach((table, index) => {
+      const tab = element('button', table.name, 'tab');
+      tab.type = 'button';
+      tab.id = 'tab-' + table.id;
+      tab.setAttribute('role', 'tab');
+      tab.setAttribute('aria-controls', 'panel-' + table.id);
+      tab.addEventListener('click', () => activateTab(index));
+      tab.addEventListener('keydown', event => {
+        const destinations = {
+          ArrowLeft: (index + tabs.length - 1) % tabs.length,
+          ArrowRight: (index + 1) % tabs.length,
+          Home: 0,
+          End: tabs.length - 1
+        };
+        if (!Object.hasOwn(destinations, event.key)) return;
+        event.preventDefault();
+        activateTab(destinations[event.key], true);
+      });
+
+      const panel = template.content.firstElementChild.cloneNode(true);
+      panel.id = 'panel-' + table.id;
+      panel.setAttribute('aria-labelledby', tab.id);
+      panel.querySelector('.total .amount').textContent = currency.format(table.total);
+      panel.querySelector('table').setAttribute('aria-label', table.name + ' budget breakdown');
+      addLargestCosts(panel.querySelector('.cost-bars'), table);
+
+      connectBudgetTable(panel, table);
+
+      tabs.push(tab);
+      panels.push(panel);
+      tabList.append(tab);
+      panelList.append(panel);
+    });
+
+    activateTab(0);
+  </script>
+</body>
+</html>
