@@ -39,6 +39,21 @@
     [hidden] { display: none !important; }
     .chooser { display: flex; align-items: end; gap: 8px; margin-bottom: 18px; }
     .chooser label { flex: 1; min-width: 0; }
+    #edit-trail { margin-bottom: 18px; border: 1px solid var(--line); border-radius: 12px; }
+    #edit-trail > summary { padding: 11px 14px; font-weight: 650; }
+    summary { cursor: pointer; overflow-wrap: anywhere; }
+    #trail-message { padding: 0 14px 12px; }
+    #trail-list { list-style: none; margin: 0; padding: 0 14px 8px; }
+    #trail-list > li { border-top: 1px solid var(--line); }
+    #trail-list summary { padding-block: 9px; font-weight: 600; }
+    .trail-meta { margin-bottom: 8px; }
+    .trail-fields { margin: 0 0 10px; }
+    .trail-fields > div { margin-top: 7px; }
+    .trail-fields dt { font-weight: 650; }
+    .trail-fields dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .trail-values { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+    .trail-value { background: var(--surface); border-radius: 6px; padding: 6px 8px; }
+    .trail-value span { display: block; }
     form { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; }
     label { display: block; min-width: 0; font-weight: 600; }
     label span { color: var(--muted); font-weight: 400; }
@@ -85,6 +100,12 @@
       <button type="button" id="add-entry">Add entry</button>
     </div>
 
+    <details id="edit-trail">
+      <summary>Edit trail <span id="trail-count" class="help"></span></summary>
+      <p id="trail-message" class="help">Loading changes…</p>
+      <ol id="trail-list"></ol>
+    </details>
+
     <form id="entry-form" method="get" target="_blank" rel="noopener noreferrer">
       <h2 id="form-heading">Add entry</h2>
       <label>Item
@@ -122,7 +143,7 @@
     <p id="admin-status" class="status" role="status"></p>
   </main>
 
-  <script src="taiwan-2027-dashboard-entries.js"></script>
+  <script src="taiwan-2027-dashboard-entries.js?v=2"></script>
   <script>
     const form = document.querySelector('#entry-form');
     const editEntry = document.querySelector('#edit-entry');
@@ -138,8 +159,86 @@
     const cost = document.querySelector('#entry-cost');
     const heading = document.querySelector('#form-heading');
     const submitEntry = form.querySelector('button[type=submit]');
+    const trailCount = document.querySelector('#trail-count');
+    const trailMessage = document.querySelector('#trail-message');
+    const trailList = document.querySelector('#trail-list');
+    const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+    const money = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' });
+    const groupNames = new Map(checks.map(check => [check.value, check.parentElement.textContent.trim()]));
+    const fieldNames = ['Item', 'Details', 'Total / offer', 'Where to buy', 'Per person', 'Apply to'];
     let directory = new Map();
+    let trail = null;
     let editing = null;
+
+    function trailElement(tag, text = '', className = '') {
+      const element = document.createElement(tag);
+      element.textContent = text;
+      element.className = className;
+      return element;
+    }
+
+    function snapshotFields(snapshot) {
+      return [...snapshot.values, snapshot.groups.map(group => groupNames.get(group)).join(', ')];
+    }
+
+    function trailValue(label, value) {
+      const display = typeof value === 'number' ? money.format(value) : value ?? 'None';
+      const box = trailElement('div', '', 'trail-value');
+      box.append(trailElement('span', label, 'help'), trailElement('span', display));
+      return box;
+    }
+
+    function renderChange(event) {
+      const { change, before, after } = event;
+      const added = change.action === 'add';
+      const disclosure = document.createElement('details');
+      const name = after.values[0] || after.values[1];
+      const title = (added ? 'Added' : 'Edited') + ' · ' + name;
+      const summary = trailElement('summary', title);
+      summary.append(' ', trailElement('span', '#' + change.number, 'help'));
+      const meta = trailElement('p', event.status + ' · ' + change.author + ' · ', 'help trail-meta');
+      const parsedDate = Date.parse(change.date);
+      if (Number.isFinite(parsedDate)) {
+        const time = trailElement('time', dateFormat.format(parsedDate));
+        time.dateTime = change.date;
+        meta.append(time, ' · ');
+      }
+      const issue = trailElement('a', 'GitHub #' + change.number);
+      issue.href = change.url;
+      issue.target = '_blank';
+      issue.rel = 'noopener noreferrer';
+      meta.append(issue);
+
+      const from = before ? snapshotFields(before) : null;
+      const to = snapshotFields(after);
+      const fields = trailElement('dl', '', 'trail-fields');
+      const beforeLabel = from && !change.before ? 'Before (reconstructed)' : 'Before';
+      fieldNames.forEach((field, index) => {
+        if (from && from[index] === to[index] || added && to[index] === null) return;
+        const row = document.createElement('div');
+        const values = trailElement('dd', '', 'trail-values');
+        if (!added) values.append(trailValue(beforeLabel, from ? from[index] : 'Unavailable'));
+        values.append(trailValue(added ? 'Value' : 'After', to[index]));
+        row.append(trailElement('dt', field), values);
+        fields.append(row);
+      });
+
+      disclosure.append(summary, meta);
+      if (fields.children.length) disclosure.append(fields);
+      else disclosure.append(trailElement('p', 'No field values changed.', 'help'));
+      const listItem = document.createElement('li');
+      listItem.append(disclosure);
+      return listItem;
+    }
+
+    function renderTrail() {
+      if (!trail) return;
+      const visible = editing ? trail.filter(event => event.id === editing.id) : trail;
+      trailCount.textContent = visible.length ? '(' + visible.length + ')' : '';
+      trailMessage.textContent = visible.length ? '' : editing ? 'No edits recorded for this entry.' : 'No changes recorded yet.';
+      trailMessage.hidden = visible.length > 0;
+      trailList.replaceChildren(...visible.map(renderChange));
+    }
 
     function setEditor(record) {
       form.reset();
@@ -165,6 +264,7 @@
         source.value = vendor ?? '';
         cost.value = perPerson ?? '';
       }
+      renderTrail();
     }
 
     function quoteValue(value) {
@@ -204,7 +304,10 @@
           cost.value === '' || cost.disabled ? null : cost.valueAsNumber
         ]
       };
-      if (editing) change.target = editing.id;
+      if (editing) {
+        change.target = editing.id;
+        change.before = { values: editing.values.slice(0, 5), groups: editing.groups };
+      }
       if (!budgetEntries.valid(change)) {
         event.preventDefault();
         error.textContent = 'Check the item name and amounts before continuing.';
@@ -230,32 +333,36 @@
             if (!response.ok) throw new Error('Dashboard snapshot unavailable');
             return response.text();
           }),
-          budgetEntries.load()
+          budgetEntries.load({ includeClosed: true })
         ]);
         const snapshot = new DOMParser().parseFromString(page, 'text/html');
         const tables = JSON.parse(snapshot.querySelector('#workbook-data').textContent);
-        const groups = new Map(tables.map(table => [table.id, table.name]));
-        directory = budgetEntries.project(tables, changes).directory;
+        const projected = budgetEntries.project(tables, changes, { history: true });
+        directory = projected.directory;
+        trail = projected.trail.reverse();
         const sections = ['Added entries', 'Workbook entries'].map(label => {
           const section = document.createElement('optgroup');
           section.label = label;
           return section;
         });
         for (const record of directory.values()) {
-          const labels = record.groups.map(group => groups.get(group)).join(', ');
+          const labels = record.groups.map(group => groupNames.get(group)).join(', ');
           const title = record.values[0] || record.values[1];
           const suffix = record.values[0] && record.values[1] ? ' · ' + record.values[1] : '';
           sections[Number(Boolean(record.original))].append(new Option(labels + ' · ' + title + suffix, record.id));
         }
         editEntry.append(...sections.filter(section => section.children.length));
         editEntry.disabled = false;
+        renderTrail();
       } catch {
         status.textContent = 'Existing entries are temporarily unavailable. Reload this page to edit them.';
+        trailMessage.textContent = 'The edit trail is temporarily unavailable.';
       }
     }
 
     if (typeof budgetEntries === 'undefined') {
       status.textContent = 'The editor is temporarily unavailable. Reload this page to retry.';
+      trailMessage.textContent = 'The edit trail is temporarily unavailable.';
     } else {
       submitEntry.disabled = false;
       loadEditor();

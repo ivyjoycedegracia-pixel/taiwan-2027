@@ -1,5 +1,6 @@
 const budgetEntries = (() => {
   const repository = 'ivyjoycedegracia-pixel/taiwan-2027';
+  const ownerLogin = repository.split('/')[0];
   const ownerId = 289357925;
   const label = 'dashboard-entry';
   const marker = '<!-- taiwan-budget-entry:v1 -->';
@@ -16,39 +17,53 @@ const budgetEntries = (() => {
       value >= 0 && value <= Number.MAX_SAFE_INTEGER / 100;
   }
 
+  function validSnapshot(snapshot) {
+    if (!snapshot || !Array.isArray(snapshot.values) || snapshot.values.length !== 5 ||
+        !Array.isArray(snapshot.groups) || snapshot.groups.length === 0 ||
+        snapshot.groups.length > groups.size || !snapshot.groups.every(group => groups.has(group))) return false;
+
+    const [item, details, quote, source, perPerson] = snapshot.values;
+    return textField(item, 100) && textField(details, 400) && textField(source, 70) &&
+      (amount(quote) || textField(quote, 100)) && (perPerson === null || amount(perPerson));
+  }
+
   function valid(change) {
-    if (!change || !Array.isArray(change.values) || change.values.length !== 5 ||
-        !Array.isArray(change.groups) || change.groups.length === 0 ||
-        change.groups.length > groups.size || !change.groups.every(group => groups.has(group))) return false;
-
-    const [item, details, quote, source, perPerson] = change.values;
-    if (!textField(item, 100) || !textField(details, 400) || !textField(source, 70) ||
-        !(amount(quote) || textField(quote, 100)) || !(perPerson === null || amount(perPerson))) return false;
-
+    if (!validSnapshot(change)) return false;
+    const [item, details] = change.values;
     if (change.action === 'add') return Boolean(item);
     return change.action === 'edit' && (item || details) &&
-      typeof change.target === 'string' && change.target.length <= 550;
+      typeof change.target === 'string' && change.target.length <= 550 &&
+      (change.before === undefined || validSnapshot(change.before));
   }
 
   function decode(issue) {
-    if (issue.user?.id !== ownerId || issue.state !== 'open' || issue.pull_request ||
+    if (issue.user?.id !== ownerId || !['open', 'closed'].includes(issue.state) || issue.pull_request ||
         !issue.labels?.some(tag => tag.name === label) ||
         !Number.isSafeInteger(issue.number) || typeof issue.body !== 'string') return null;
 
     const [first, blank, fence, payload, close] = issue.body.split(/\r?\n/, 5);
-    if (first !== marker || blank !== '' || fence !== '```json' || close !== '```' || payload.length > 2500) return null;
+    if (first !== marker || blank !== '' || fence !== '```json' || close !== '```' || payload.length > 7500) return null;
     try {
       const change = JSON.parse(payload);
-      return valid(change) ? { ...change, number: issue.number } : null;
+      if (!valid(change)) return null;
+      return {
+        ...change,
+        number: issue.number,
+        state: issue.state,
+        author: issue.user.login || ownerLogin,
+        date: issue.created_at,
+        url: 'https://github.com/' + repository + '/issues/' + issue.number
+      };
     } catch {
       return null;
     }
   }
 
-  async function load() {
+  async function load({ includeClosed = false } = {}) {
     const endpoint = new URL('https://api.github.com/repos/' + repository + '/issues');
     endpoint.search = new URLSearchParams({
-      state: 'open', labels: label, creator: repository.split('/')[0], per_page: '100', sort: 'created', direction: 'asc'
+      state: includeClosed ? 'all' : 'open', labels: label, creator: ownerLogin,
+      per_page: '100', sort: 'created', direction: 'asc'
     });
     const changes = [];
     const signal = AbortSignal.timeout(12000);
@@ -58,6 +73,7 @@ const budgetEntries = (() => {
       if (!response.ok) throw new Error('Shared entries returned HTTP ' + response.status);
       const issues = await response.json();
       for (const issue of issues) {
+        if (!includeClosed && issue.state !== 'open') continue;
         const change = decode(issue);
         if (change) changes.push(change);
       }
@@ -76,7 +92,7 @@ const budgetEntries = (() => {
     return url;
   }
 
-  function project(tables, changes) {
+  function project(tables, changes, { history = false } = {}) {
     const directory = new Map();
     const workbook = new Map();
     for (const table of tables) {
@@ -93,26 +109,44 @@ const budgetEntries = (() => {
     }
 
     const additions = [];
-    const applied = new Set();
+    const trail = [];
+    const seen = new Set();
     for (const change of [...changes].sort((a, b) => a.number - b.number)) {
-      if (applied.has(change.number)) continue;
-      applied.add(change.number);
-      if (change.action === 'add') {
-        const record = { id: 'entry:' + change.number, values: [...change.values, null], groups: change.groups };
-        additions.push(record);
-        directory.set(record.id, record);
+      if (seen.has(change.number)) continue;
+      seen.add(change.number);
+      const isAdd = change.action === 'add';
+      const id = isAdd ? 'entry:' + change.number : change.target;
+      const record = directory.get(id);
+      const canEdit = record && (!record.original ||
+        change.groups.length === 1 && change.groups[0] === record.groups[0]);
+      let status = 'Published';
+      if (change.state === 'closed') status = 'Withdrawn';
+      else if (!isAdd && !canEdit) status = 'Not applied';
+
+      const values = change.values.slice();
+      if (record?.sharedFare) values[4] = null;
+      if (history) {
+        const earlier = record ? { values: record.values.slice(0, 5), groups: record.groups } : null;
+        trail.push({
+          id, change, status, before: change.before ?? earlier,
+          after: { values, groups: change.groups }
+        });
+      }
+
+      if (status !== 'Published') continue;
+      if (isAdd) {
+        const newRecord = { id, values: [...values, null], groups: change.groups };
+        additions.push(newRecord);
+        directory.set(id, newRecord);
       } else {
-        const record = directory.get(change.target);
-        if (!record) continue;
-        if (record.original && (change.groups.length !== 1 || change.groups[0] !== record.groups[0])) continue;
-        record.values = [...change.values, record.original?.[5] ?? null];
-        if (record.sharedFare) record.values[4] = null;
+        record.values = [...values, record.original?.[5] ?? null];
         if (!record.original) record.groups = change.groups;
       }
     }
 
     return {
       directory,
+      trail,
       tables: tables.map(table => {
         const original = workbook.get(table.id);
         const extra = additions.filter(record => record.groups.includes(table.id));
