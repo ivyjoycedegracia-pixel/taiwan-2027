@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="robots" content="noindex">
+  <title>Taiwan 2027 Budget Admin</title>
+  <style>
+    :root {
+      --ink: #20352e;
+      --muted: #4e655a;
+      --line: #a6bdb1;
+      --surface: #f0f6f1;
+      --accent: #176149;
+      --button: #155641;
+      --error: #a12820;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --ink: #e4f2eb;
+        --muted: #adc6b9;
+        --line: #547364;
+        --surface: #1b2d24;
+        --accent: #87d4b1;
+        --error: #ffc1b9;
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: clamp(16px, 4vw, 44px); color: var(--ink); font: 15px/1.5 system-ui, sans-serif; }
+    main { max-width: 670px; margin-inline: auto; }
+    h1, h2, p { margin: 0; }
+    h1 { font-size: clamp(23px, 4vw, 32px); letter-spacing: -.035em; line-height: 1.2; }
+    h2 { font-size: 19px; }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    header { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 6px 16px; }
+    .intro { color: var(--muted); margin: 8px 0 22px; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    [hidden] { display: none !important; }
+    .chooser { display: flex; align-items: end; gap: 8px; margin-bottom: 18px; }
+    .chooser label { flex: 1; min-width: 0; }
+    form { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; }
+    label { display: block; min-width: 0; font-weight: 600; }
+    label span { color: var(--muted); font-weight: 400; }
+    input:not([type=checkbox]), textarea, select, button {
+      min-height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink);
+      font: inherit;
+    }
+    input:not([type=checkbox]), textarea, select { display: block; width: 100%; margin-top: 4px; padding: 8px 10px; }
+    textarea { resize: vertical; }
+    button { padding: 8px 12px; font-weight: 650; cursor: pointer; }
+    button:disabled { opacity: .65; cursor: default; }
+    .primary { background: var(--button); border-color: var(--button); color: #fff; justify-self: start; }
+    .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    fieldset { min-inline-size: 0; margin: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; }
+    legend { padding-inline: 4px; font-weight: 600; }
+    #entry-groups { display: flex; flex-wrap: wrap; gap: 2px 14px; }
+    #entry-groups label { display: flex; align-items: center; gap: 5px; min-height: 40px; font-weight: 500; }
+    #entry-groups input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
+    .help, .status { font-size: 13px; color: var(--muted); }
+    .error { font-size: 13px; color: var(--error); }
+    .error:empty, .status:empty { display: none; }
+    .status { margin-top: 10px; }
+    @media (max-width: 470px) { .pair { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Taiwan 2027 Budget Admin</h1>
+      <a href="taiwan-2027-dashboard.html">View public dashboard</a>
+    </header>
+    <p class="intro">Changes appear on the public dashboard after you submit them on GitHub as <strong>ivyjoycedegracia-pixel</strong>.</p>
+
+    <div class="chooser">
+      <label>Edit an entry
+        <select id="edit-entry" disabled>
+          <option value="">Select an entry</option>
+        </select>
+      </label>
+      <button type="button" id="add-entry">Add entry</button>
+    </div>
+
+    <form id="entry-form" method="get" target="_blank" rel="noopener noreferrer">
+      <h2 id="form-heading">Add entry</h2>
+      <label>Item
+        <input id="entry-item" maxlength="100" required>
+      </label>
+      <label>Details <span>(optional)</span>
+        <textarea id="entry-details" maxlength="400" rows="2"></textarea>
+      </label>
+      <div class="pair">
+        <label>Total / offer <span>(optional)</span>
+          <input id="entry-quote" maxlength="100" placeholder="PHP amount or offer">
+        </label>
+        <label>Where to buy <span>(optional)</span>
+          <input id="entry-source" maxlength="70">
+        </label>
+      </div>
+      <label>Per person in PHP <span>(optional)</span>
+        <input id="entry-cost" type="number" min="0" step="any" inputmode="decimal">
+      </label>
+      <fieldset>
+        <legend>Apply to</legend>
+        <div id="entry-groups">
+          <label><input type="checkbox" value="five"> 5 pax</label>
+          <label><input type="checkbox" value="regular"> 7 pax Regular</label>
+          <label><input type="checkbox" value="senior"> 7 pax Senior</label>
+        </div>
+      </fieldset>
+      <p id="group-help" class="help">The same per-person amount applies to each selected group.</p>
+      <p id="entry-error" class="error" role="alert"></p>
+      <input type="hidden" name="title">
+      <input type="hidden" name="body">
+      <input type="hidden" name="labels">
+      <button type="submit" class="primary" disabled>Continue to GitHub</button>
+    </form>
+    <p id="admin-status" class="status" role="status"></p>
+  </main>
+
+  <script src="taiwan-2027-dashboard-entries.js"></script>
+  <script>
+    const form = document.querySelector('#entry-form');
+    const editEntry = document.querySelector('#edit-entry');
+    const addEntry = document.querySelector('#add-entry');
+    const error = document.querySelector('#entry-error');
+    const status = document.querySelector('#admin-status');
+    const groupHelp = document.querySelector('#group-help');
+    const checks = [...document.querySelectorAll('#entry-groups input')];
+    const item = document.querySelector('#entry-item');
+    const details = document.querySelector('#entry-details');
+    const quote = document.querySelector('#entry-quote');
+    const source = document.querySelector('#entry-source');
+    const cost = document.querySelector('#entry-cost');
+    const heading = document.querySelector('#form-heading');
+    const submitEntry = form.querySelector('button[type=submit]');
+    let directory = new Map();
+    let editing = null;
+
+    function setEditor(record) {
+      form.reset();
+      error.textContent = '';
+      editing = record;
+      heading.textContent = record ? 'Edit entry' : 'Add entry';
+      item.required = !record || Boolean(record.values[0]);
+      editEntry.value = record?.id ?? '';
+      for (const check of checks) {
+        check.checked = record?.groups.includes(check.value) ?? false;
+        check.disabled = Boolean(record?.original);
+      }
+      cost.disabled = Boolean(record?.sharedFare);
+      groupHelp.textContent = record?.sharedFare
+        ? 'This row shares the Wulai fare on the cable car row.'
+        : 'The same per-person amount applies to each selected group.';
+      groupHelp.hidden = Boolean(record?.original && !record.sharedFare);
+      if (record) {
+        const [name, description, offer, vendor, perPerson] = record.values;
+        item.value = name ?? '';
+        details.value = description ?? '';
+        quote.value = offer ?? '';
+        source.value = vendor ?? '';
+        cost.value = perPerson ?? '';
+      }
+    }
+
+    function quoteValue(value) {
+      const text = value.trim();
+      if (/^(?:₱|PHP\s*)?(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?$/i.test(text)) {
+        return Number(text.replace(/^(?:₱|PHP\s*)|,/gi, ''));
+      }
+      return text || null;
+    }
+
+    addEntry.addEventListener('click', () => {
+      setEditor(null);
+      item.focus();
+    });
+    editEntry.addEventListener('change', () => {
+      setEditor(directory.get(editEntry.value) ?? null);
+      item.focus();
+    });
+
+    form.addEventListener('submit', event => {
+      error.textContent = '';
+      const selected = checks.filter(check => check.checked).map(check => check.value);
+      if (!selected.length) {
+        event.preventDefault();
+        error.textContent = 'Select at least one group.';
+        checks[0].focus();
+        return;
+      }
+      const change = {
+        action: editing ? 'edit' : 'add',
+        groups: selected,
+        values: [
+          item.value.trim() || null,
+          details.value.trim() || null,
+          quoteValue(quote.value),
+          source.value.trim() || null,
+          cost.value === '' || cost.disabled ? null : cost.valueAsNumber
+        ]
+      };
+      if (editing) change.target = editing.id;
+      if (!budgetEntries.valid(change)) {
+        event.preventDefault();
+        error.textContent = 'Check the item name and amounts before continuing.';
+        item.focus();
+        return;
+      }
+      const next = budgetEntries.compose(change, (change.values[0] || change.values[1]).slice(0, 100));
+      if (next.href.length > 7500) {
+        event.preventDefault();
+        error.textContent = 'Shorten the details before continuing.';
+        details.focus();
+        return;
+      }
+      form.action = next.origin + next.pathname;
+      for (const [name, value] of next.searchParams) form.elements.namedItem(name).value = value;
+      status.textContent = 'Submit the prefilled issue in the GitHub tab to publish your change.';
+    });
+
+    async function loadEditor() {
+      try {
+        const [page, changes] = await Promise.all([
+          fetch('taiwan-2027-dashboard.html').then(response => {
+            if (!response.ok) throw new Error('Dashboard snapshot unavailable');
+            return response.text();
+          }),
+          budgetEntries.load()
+        ]);
+        const snapshot = new DOMParser().parseFromString(page, 'text/html');
+        const tables = JSON.parse(snapshot.querySelector('#workbook-data').textContent);
+        const groups = new Map(tables.map(table => [table.id, table.name]));
+        directory = budgetEntries.project(tables, changes).directory;
+        const sections = ['Added entries', 'Workbook entries'].map(label => {
+          const section = document.createElement('optgroup');
+          section.label = label;
+          return section;
+        });
+        for (const record of directory.values()) {
+          const labels = record.groups.map(group => groups.get(group)).join(', ');
+          const title = record.values[0] || record.values[1];
+          const suffix = record.values[0] && record.values[1] ? ' · ' + record.values[1] : '';
+          sections[Number(Boolean(record.original))].append(new Option(labels + ' · ' + title + suffix, record.id));
+        }
+        editEntry.append(...sections.filter(section => section.children.length));
+        editEntry.disabled = false;
+      } catch {
+        status.textContent = 'Existing entries are temporarily unavailable. Reload this page to edit them.';
+      }
+    }
+
+    if (typeof budgetEntries === 'undefined') {
+      status.textContent = 'The editor is temporarily unavailable. Reload this page to retry.';
+    } else {
+      submitEntry.disabled = false;
+      loadEditor();
+    }
+  </script>
+</body>
+</html>
