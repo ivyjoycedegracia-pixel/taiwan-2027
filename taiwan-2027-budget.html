@@ -102,7 +102,7 @@ function renderItinerary(){
  const five=calculate(5),seven=calculate(7);
  document.querySelectorAll('[data-day-budget]').forEach(el=>{
   const i=Number(el.dataset.dayBudget);
-  const buttons=[five,seven].map(result=>`<button type="button" class="day-amount" data-budget-day="${i}" data-budget-pax="${result.pax}" aria-haspopup="dialog" aria-controls="summary-budget-dialog" aria-label="View ${esc(result.days[i].date)} cost breakdown per person for ${result.pax} people">${peso(result.days[i].php)} <span>(${result.pax} people)</span></button>`);
+  const buttons=[five,seven].map(result=>`<button type="button" class="day-amount" data-budget-day="${i}" data-budget-pax="${result.pax}" aria-haspopup="dialog" aria-controls="summary-budget-dialog" aria-label="${peso(result.days[i].php)} (${result.pax} people): view ${esc(result.days[i].date)} cost breakdown per person">${peso(result.days[i].php)} <span>(${result.pax} people)</span></button>`);
   el.innerHTML=`<span>Daily extras / person:</span> ${buttons.join('<span aria-hidden="true"> · </span>')}`;
  });
  const common=document.getElementById('itinerary-budget-note');if(common)common.textContent=`Daily figures follow the current budget choices at NT$1 = ${peso(state.fx,3)}. Tap an amount for its breakdown. They exclude upfront quotes, Taichung hotels and the contingency reserve; open Budget for the full trip total.`;
