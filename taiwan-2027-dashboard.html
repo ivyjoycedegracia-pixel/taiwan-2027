@@ -118,7 +118,7 @@
     .table-controls { display: flex; align-items: end; gap: 12px; margin-top: 12px; }
     .filter-control { flex: 1; min-width: 0; max-width: 220px; }
     .control-label { display: block; margin-bottom: 4px; color: var(--muted); font-size: 12px; font-weight: 650; }
-    .table-controls select, .sort-button {
+    .table-controls select, .sort-button, .purchase-filter summary {
       min-height: 44px;
       border: 1px solid color-mix(in srgb, var(--line) 55%, var(--muted));
       border-radius: 8px;
@@ -128,6 +128,48 @@
       cursor: pointer;
     }
     .table-controls select { width: 100%; padding: 6px 9px; }
+    .purchase-filter { position: relative; }
+    .purchase-filter summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 6px 9px;
+      list-style: none;
+      overflow-wrap: anywhere;
+    }
+    .purchase-filter summary::-webkit-details-marker { display: none; }
+    .purchase-filter summary::after { content: '▾'; flex: none; }
+    .purchase-filter[open] summary::after { transform: rotate(180deg); }
+    .purchase-menu {
+      position: absolute;
+      z-index: 2;
+      inset: calc(100% + 4px) 0 auto;
+      max-height: min(320px, 54vh);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      border: 1px solid color-mix(in srgb, var(--line) 55%, var(--muted));
+      border-radius: 8px;
+      background: var(--background, Canvas);
+      box-shadow: 0 8px 22px #0002;
+    }
+    .purchase-clear {
+      width: 100%;
+      min-height: 40px;
+      padding: 6px 10px;
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--budget-accent);
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+    .purchase-option { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 6px 10px; cursor: pointer; }
+    .purchase-option:hover { background: var(--surface); }
+    .purchase-option input { flex: none; width: 16px; height: 16px; margin: 0; accent-color: var(--budget-accent); }
+    .purchase-option span { min-width: 0; overflow-wrap: anywhere; }
+    .purchase-menu :focus-visible { outline-offset: -2px; }
     .compact-sort { display: none; }
     .sort-buttons { display: flex; gap: 5px; }
     .sort-button { min-width: 44px; padding: 0 8px; font-size: 20px; }
@@ -225,12 +267,16 @@
         <p class="row-count" role="status"></p>
       </div>
       <div class="table-controls">
-        <label class="filter-control">
+        <div class="filter-control">
           <span class="control-label">Where to buy</span>
-          <select class="purchase-filter">
-            <option value="">All sources</option>
-          </select>
-        </label>
+          <details class="purchase-filter">
+            <summary aria-label="Where to buy: All sources"><span class="purchase-summary">All sources</span></summary>
+            <div class="purchase-menu">
+              <button type="button" class="purchase-clear">Clear selection</button>
+              <div class="purchase-options" role="group" aria-label="Purchase sources"></div>
+            </div>
+          </details>
+        </div>
         <div class="compact-sort" role="group" aria-label="Table sort">
           <label>
             <span class="control-label">Sort by</span>
@@ -341,13 +387,17 @@
 
     function connectBudgetTable(panel, table) {
       const filter = panel.querySelector('.purchase-filter');
+      const filterSummary = filter.querySelector('summary');
+      const filterLabel = filter.querySelector('.purchase-summary');
+      const filterOptions = filter.querySelector('.purchase-options');
+      const selectedSources = new Set();
+      let sourceInputs = new Map();
       const sortField = panel.querySelector('.sort-field');
       const sortButtons = panel.querySelectorAll('.sort-button');
       const headers = [...panel.querySelectorAll('thead th')];
       const rowCount = panel.querySelector('.row-count');
       const body = panel.querySelector('tbody');
       let rows, fare, continuation, fareCell, sharedCell;
-      let choices = [];
 
       let sortColumn = '';
       let direction = '';
@@ -371,8 +421,7 @@
       });
 
       function updateRows() {
-        const selection = filter.value;
-        const displayed = rows.filter(row => selection === '' || row.values[3] === choices[selection]);
+        const displayed = rows.filter(row => !selectedSources.size || selectedSources.has(row.values[3]));
         if (sortColumn !== '') {
           const sign = direction === 'ascending' ? 1 : -1;
           const sortValue = row => sortColumn === '4' && row === continuation
@@ -392,6 +441,43 @@
         const count = displayed.length;
         const label = count === rows.length ? `${count} items` : `${count} of ${rows.length} items`;
         if (rowCount.textContent !== label) rowCount.textContent = label;
+      }
+
+      function refreshFilter() {
+        let label = 'All sources';
+        if (selectedSources.size === 1) label = selectedSources.values().next().value ?? 'No source listed';
+        if (selectedSources.size > 1) label = `${selectedSources.size} sources`;
+        filterLabel.textContent = label;
+        filterSummary.setAttribute('aria-label', 'Where to buy: ' + label);
+        updateRows();
+      }
+
+      function updateSourceOptions() {
+        const sources = new Set(rows.map(row => row.values[3]));
+        if (sourceInputs.size === sources.size && [...sources].every(source => sourceInputs.has(source))) return;
+        for (const source of selectedSources) {
+          if (!sources.has(source)) selectedSources.delete(source);
+        }
+
+        const focusedSource = [...sourceInputs].find(([, input]) => input === document.activeElement)?.[0];
+        sourceInputs = new Map();
+        const choices = [...sources].filter(source => source !== null).sort(textCollator.compare);
+        if (sources.has(null)) choices.push(null);
+        filterOptions.replaceChildren(...choices.map(source => {
+          const option = element('label', '', 'purchase-option');
+          const input = element('input');
+          input.type = 'checkbox';
+          input.checked = selectedSources.has(source);
+          input.addEventListener('change', () => {
+            if (input.checked) selectedSources.add(source);
+            else selectedSources.delete(source);
+            refreshFilter();
+          });
+          sourceInputs.set(source, input);
+          option.append(input, element('span', source ?? 'No source listed'));
+          return option;
+        }));
+        if (focusedSource !== undefined) (sourceInputs.get(focusedSource) ?? filterSummary).focus({ preventScroll: true });
       }
 
       function setSort(column, nextDirection = '') {
@@ -418,7 +504,19 @@
         updateRows();
       }
 
-      filter.addEventListener('change', updateRows);
+      filter.querySelector('.purchase-clear').addEventListener('click', () => {
+        selectedSources.clear();
+        for (const input of sourceInputs.values()) input.checked = false;
+        refreshFilter();
+      });
+      filter.addEventListener('keydown', event => {
+        if (event.key !== 'Escape' || !filter.open) return;
+        filter.open = false;
+        filterSummary.focus();
+      });
+      filter.addEventListener('focusout', event => {
+        if (event.relatedTarget && !filter.contains(event.relatedTarget)) filter.open = false;
+      });
       sortField.addEventListener('change', () => {
         if (sortField.value === '') setSort('');
         else setSort(sortField.value, 'ascending');
@@ -441,19 +539,10 @@
         sharedCell.textContent = 'Shared fare';
         sharedCell.title = fareCell.textContent ? 'Included in the ' + fareCell.textContent + ' Wulai fare' : 'Shared Wulai fare';
 
-        const selection = choices[filter.value];
-        const sources = [...new Set(rows.map(row => row.values[3]))];
-        choices = sources.filter(source => source !== null).sort(textCollator.compare);
-        if (sources.includes(null)) choices.push(null);
-        filter.replaceChildren(
-          new Option('All sources', ''),
-          ...choices.map((source, index) => new Option(source ?? 'No source listed', index))
-        );
-        const selected = choices.indexOf(selection);
-        if (selected >= 0) filter.value = String(selected);
+        updateSourceOptions();
         panel.querySelector('.total .amount').textContent = currency.format(data.total);
         addLargestCosts(panel.querySelector('.cost-bars'), data);
-        updateRows();
+        refreshFilter();
       }
 
       updateTable(table);
@@ -467,6 +556,7 @@
         tab.setAttribute('aria-selected', selected);
         tab.tabIndex = selected ? 0 : -1;
         panels[position].hidden = !selected;
+        if (!selected) panels[position].querySelector('.purchase-filter').open = false;
       });
       if (focus) tabs[index].focus();
       if (tabList.getBoundingClientRect().top <= 0) window.scrollTo(0, 0);
@@ -509,6 +599,11 @@
     });
 
     activateTab(0);
+
+    document.addEventListener('click', event => {
+      const openFilter = document.querySelector('.purchase-filter[open]');
+      if (openFilter && !openFilter.contains(event.target)) openFilter.open = false;
+    });
 
     if (typeof budgetEntries !== 'undefined') {
       budgetEntries.load().then(changes => {
