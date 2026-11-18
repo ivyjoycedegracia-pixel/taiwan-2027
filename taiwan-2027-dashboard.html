@@ -417,6 +417,8 @@
       const filterOptions = filter.querySelector('.purchase-options');
       const selectedSources = new Set();
       let sourceInputs = new Map();
+      let filterPointer = null;
+      let pendingTable = null;
       const sortField = panel.querySelector('.sort-field');
       const sortButtons = panel.querySelectorAll('.sort-button');
       const headers = [...panel.querySelectorAll('thead th')];
@@ -547,13 +549,35 @@
         for (const input of sourceInputs.values()) input.checked = false;
         refreshFilter();
       });
-      filter.addEventListener('keydown', event => {
-        if (event.key !== 'Escape' || !filter.open) return;
-        filter.open = false;
-        filterSummary.focus();
+      function finishFilterGesture() {
+        filterPointer = null;
+        if (pendingTable) {
+          const data = pendingTable;
+          pendingTable = null;
+          updateTable(data);
+        }
+      }
+
+      filter.querySelector('.purchase-menu').addEventListener('pointerdown', event => {
+        filterPointer = event.pointerId;
       });
-      filter.addEventListener('focusout', event => {
-        if (event.relatedTarget && !filter.contains(event.relatedTarget)) filter.open = false;
+      for (const eventName of ['pointerup', 'pointercancel']) {
+        document.addEventListener(eventName, event => {
+          if (event.pointerId !== filterPointer) return;
+          setTimeout(() => {
+            if (event.pointerId === filterPointer) finishFilterGesture();
+          }, 0);
+        });
+      }
+      filter.addEventListener('toggle', () => {
+        if (!filter.open) finishFilterGesture();
+      });
+
+      filter.addEventListener('keydown', event => {
+        if (event.key !== 'Tab' || !filter.open) return;
+        requestAnimationFrame(() => {
+          if (!filter.contains(document.activeElement)) filter.open = false;
+        });
       });
       sortField.addEventListener('change', () => {
         if (sortField.value === '') setSort('');
@@ -568,6 +592,11 @@
       }
 
       function updateTable(data) {
+        // Keep the pressed option in place until the browser finishes the click.
+        if (filterPointer !== null) {
+          pendingTable = data;
+          return;
+        }
         rows = data.rows.map(values => ({ values, node: makeBudgetRow(values) }));
         fare = rows[data.mergedCostRow];
         continuation = rows[data.mergedCostRow + 1];
@@ -638,9 +667,16 @@
 
     activateTab(0);
 
-    document.addEventListener('click', event => {
+    document.addEventListener('pointerdown', event => {
       const openFilter = document.querySelector('.purchase-filter[open]');
       if (openFilter && !openFilter.contains(event.target)) openFilter.open = false;
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key !== 'Escape') return;
+      const openFilter = document.querySelector('.purchase-filter[open]');
+      if (!openFilter) return;
+      openFilter.open = false;
+      openFilter.querySelector('summary').focus();
     });
 
     if (typeof budgetEntries !== 'undefined') {
