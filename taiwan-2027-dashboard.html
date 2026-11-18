@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
-  <title>Taiwan 2027 Budget Dashboard</title>
+  <title>Taiwan 2027 | Budget and itinerary</title>
   <style>
     :root {
       --ink: var(--foreground, #20352e);
@@ -52,7 +52,7 @@
       top: 0;
       z-index: 1;
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 4px;
       margin: 18px 0;
       border: 1px solid var(--line);
@@ -232,6 +232,119 @@
     .mobile-meta { display: none; }
     footer { margin-top: 15px; font-size: 12px; color: var(--muted); }
 
+    .trip-board {
+      --trip-ink: #164e41;
+      --trip-paper: #ffe18c;
+      --trip-orange: #ff995f;
+      --trip-mint: #e4f7e8;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      align-items: start;
+      gap: 35px 16px;
+      padding: 34px 18px 20px;
+      border-radius: 16px;
+      background: #c9e8f8;
+      color: var(--trip-ink);
+    }
+    .trip-board a { color: var(--trip-ink); }
+    .trip-cover { position: relative; isolation: isolate; padding: 3px 6px 0; }
+    .trip-cover::before {
+      position: absolute;
+      z-index: -1;
+      inset: 2px auto auto 7%;
+      width: 77%;
+      height: 138px;
+      content: '';
+      border-radius: 28px;
+      background: repeating-linear-gradient(90deg, #ffd367bb 0 26px, transparent 26px 32px);
+      transform: skew(24deg) rotate(-11deg);
+    }
+    .trip-cover h2 {
+      margin: 0 0 9px;
+      font: 900 clamp(47px, 7vw, 76px)/.88 'Arial Rounded MT Bold', 'Trebuchet MS', system-ui, sans-serif;
+      letter-spacing: -.07em;
+      text-transform: uppercase;
+    }
+    .trip-cover h2 span { display: block; }
+    .trip-range { width: fit-content; padding: 3px 9px; border-radius: 5px; background: var(--trip-mint); font-weight: 750; }
+    .trip-predeparture { margin-top: 18px; padding: 13px 14px; border-left: 4px solid #e47b40; border-radius: 8px; background: var(--trip-mint); }
+    .trip-predeparture h3 { font-size: 16px; }
+    .trip-predeparture ul { list-style: none; margin: 6px 0 0; padding: 0; }
+    .trip-predeparture li { padding: 5px 0; border-top: 1px solid #164e4126; }
+    .trip-predeparture li span { display: block; font-size: 12px; }
+    .trip-card { min-width: 0; padding: 0 14px 13px; border-radius: 9px; background: var(--trip-paper); }
+    .trip-banner {
+      width: fit-content;
+      margin: -16px auto 11px;
+      padding: 8px 16px 6px;
+      border-radius: 6px 6px 4px 4px;
+      background: var(--trip-orange);
+      background-image: radial-gradient(#78391540 1.5px, transparent 2px);
+      background-size: 12px 12px;
+      text-align: center;
+      transform: rotate(-2deg);
+    }
+    .trip-card:nth-of-type(even) .trip-banner {
+      background-image: linear-gradient(#78391530 1px, transparent 1px), linear-gradient(90deg, #78391530 1px, transparent 1px);
+      background-size: 12px 12px;
+      transform: rotate(2deg);
+    }
+    .trip-banner > span {
+      display: block;
+      padding: 0 4px;
+      color: #392815;
+      font: 850 19px/1.25 'Arial Rounded MT Bold', 'Trebuchet MS', system-ui, sans-serif;
+      text-transform: uppercase;
+    }
+    .trip-banner time {
+      display: inline-block;
+      margin-top: 2px;
+      padding: 2px 8px;
+      border-radius: 3px;
+      background: #195949;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 750;
+      text-transform: uppercase;
+    }
+    .trip-card h3 {
+      width: fit-content;
+      margin: 0 auto 10px;
+      padding: 3px 8px;
+      border-radius: 5px;
+      background: var(--trip-mint);
+      font-size: 17px;
+      line-height: 1.2;
+      text-align: center;
+    }
+    .trip-agenda { list-style: none; margin: 0; padding: 0; }
+    .trip-agenda > li {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 4px 7px;
+      padding: 6px 0;
+      border-top: 1px solid #164e4126;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+    .trip-agenda > li > :last-child { flex: 1 0 142px; }
+    .trip-hour { padding: 2px 6px; border-radius: 4px; background: #ffc79d; color: #543019; font-weight: 750; font-size: 11px; }
+    .trip-activity strong, .trip-activity span { display: block; }
+    .trip-agenda ul { margin: 0; padding-inline-start: 17px; }
+    .trip-agenda ul li + li { margin-top: 3px; }
+    .trip-photo { width: min(190px, 90%); margin: 2px auto 12px; padding: 5px; background: var(--trip-mint); border-radius: 4px; transform: rotate(-3deg); }
+    .trip-photo img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; object-position: 50% 46%; }
+    .trip-photo figcaption { font-size: 11px; text-align: center; margin-top: 4px; }
+
+    @media (max-width: 930px) {
+      .trip-board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 590px) {
+      .trip-board { grid-template-columns: minmax(0, 1fr); padding: 22px 13px 14px; }
+      .trip-cover { max-width: 380px; }
+    }
+
     @media (max-width: 630px) {
       .table-controls { flex-wrap: wrap; }
       .filter-control { flex-basis: 126px; }
@@ -256,9 +369,307 @@
 </head>
 <body>
   <main>
-    <h1>Taiwan 2027 Budget</h1>
-    <div class="tabs" role="tablist" aria-label="Budget tables"></div>
-    <div id="panels"></div>
+    <h1>Taiwan 2027</h1>
+    <div class="tabs" role="tablist" aria-label="Taiwan trip dashboard"></div>
+    <div id="panels">
+      <section id="panel-itinerary" role="tabpanel" tabindex="0" hidden>
+        <div class="trip-board">
+          <header class="trip-cover">
+            <h2>Taiwan <span>trip</span></h2>
+            <p class="trip-range"><time datetime="2027-01-23">Jan 23</time> – <time datetime="2027-02-02">Feb 2, 2027</time></p>
+            <section class="trip-predeparture">
+              <h3>Before departure</h3>
+              <ul>
+                <li><strong>Online Check In - Starlux</strong><span>Online Check in a day before</span></li>
+                <li><strong>EGov</strong><span>Register trip and pay travel tax</span></li>
+                <li><a href="https://twac.immigration.gov.tw/submit" target="_blank" rel="noopener noreferrer">Taiwan arrival sign up</a></li>
+                <li><a href="https://5000.taiwan.net.tw/index_en.html" target="_blank" rel="noopener noreferrer">Taiwan Luckyland</a></li>
+                <li><strong>Travel Insurance</strong><span>secure travel insurance GCash</span></li>
+              </ul>
+            </section>
+          </header>
+          <article class="trip-card">
+            <header class="trip-banner">
+              <span>Saturday</span>
+              <time datetime="2027-01-23">Jan 23</time>
+            </header>
+            <h3>Arrival</h3>
+            <ol class="trip-agenda">
+              <li>
+                <time class="trip-hour" datetime="05:30">5:30 AM</time>
+                <span>Head to Mactan Airport</span>
+              </li>
+              <li>
+                <time class="trip-hour" datetime="06:30">6:30 AM</time>
+                <span>Check in</span>
+              </li>
+              <li>
+                <time class="trip-hour" datetime="07:30">7:30 AM</time>
+                <span>Immigration</span>
+              </li>
+              <li>
+                <time class="trip-hour" datetime="10:50">10:50 AM</time>
+                <span>Flight</span>
+              </li>
+              <li>
+                <time class="trip-hour" datetime="14:00">2:00 PM</time>
+                <span>Arrival</span>
+              </li>
+              <li>
+                <time class="trip-hour" datetime="15:00">3:00 PM</time>
+                <span>Immigration</span>
+              </li>
+              <li>
+                <time class="trip-hour" datetime="16:30">4:30 PM</time>
+                <span>Hotel - Rest</span>
+              </li>
+              <li>
+                <time class="trip-hour" datetime="18:15">6:15 PM</time>
+                <span>Buy Easy Card and load 1000</span>
+              </li>
+              <li>
+                <time class="trip-hour" datetime="18:30">6:30 PM</time>
+                <span>Dinner Mala Hotpot</span>
+              </li>
+            </ol>
+          </article>
+          <article class="trip-card">
+            <header class="trip-banner">
+              <span>Sunday</span>
+              <time datetime="2027-01-24">Jan 24</time>
+            </header>
+            <h3>Taipei</h3>
+            <ol class="trip-agenda">
+              <li>
+                <time class="trip-hour" datetime="08:00">8:00 AM</time>
+                <span>Leave Hotel</span>
+              </li>
+              <li>
+                <time class="trip-hour" datetime="09:00">9:00 AM</time>
+                <span>Chiang-Kai Shek Memorial Hall</span>
+              </li>
+              <li>
+                <time class="trip-hour" datetime="10:00">10:00 AM</time>
+                <span>Capybara Knight</span>
+              </li>
+              <li>
+                <time class="trip-hour" datetime="12:00">12:00 PM</time>
+                <span>Taipei Zoo + Maokong Gondola</span>
+              </li>
+              <li>
+                <time class="trip-hour" datetime="17:00">5:00 PM</time>
+                <span>Ningxa Night Market</span>
+              </li>
+            </ol>
+          </article>
+          <article class="trip-card">
+            <header class="trip-banner">
+              <span>Monday</span>
+              <time datetime="2027-01-25">Jan 25</time>
+            </header>
+            <h3>Snow Mountain</h3>
+            <ol class="trip-agenda">
+              <li>
+                <span class="trip-hour">6:30 AM–6:30 PM</span>
+                <div class="trip-activity"><strong>Nantou tour</strong><span>Joiner or private (max 8)</span>
+                  <ul>
+                    <li>Swiss Garden</li>
+                    <li>Old England</li>
+                    <li>Qingjing Farm</li>
+                    <li>Hehuanshan Mt. (Snow Mt)</li>
+                  </ul>
+                </div>
+              </li>
+            </ol>
+          </article>
+          <article class="trip-card">
+            <header class="trip-banner">
+              <span>Tuesday</span>
+              <time datetime="2027-01-26">Jan 26</time>
+            </header>
+            <h3>Beitou Hot Springs &amp; Yangmingshan</h3>
+            <ol class="trip-agenda">
+              <li>
+                <time class="trip-hour" datetime="07:30">7:30 AM</time>
+                <span>Breakfast</span>
+              </li>
+              <li>
+                <span class="trip-hour">8 AM–6 PM</span>
+                <span>Taipei Beitou Hot Sping and Yangmingshan DayTour</span>
+              </li>
+            </ol>
+          </article>
+          <article class="trip-card">
+            <header class="trip-banner">
+              <span>Wednesday</span>
+              <time datetime="2027-01-27">Jan 27</time>
+            </header>
+            <h3>Wulai</h3>
+            <ol class="trip-agenda">
+              <li>
+                <time class="trip-hour" datetime="09:00">9:00 AM</time>
+                <span>Leave Hotel</span>
+              </li>
+              <li>
+                <time class="trip-hour" datetime="11:00">11:00 AM</time>
+                <span>Arrive Wulai</span>
+              </li>
+              <li>
+                <span class="trip-hour">11:15 AM–3:15 PM</span>
+                <ul class="trip-stops">
+                  <li>Wulai Suspension bridge</li>
+                  <li>Wulai Old Street</li>
+                  <li>Ride Wulai Scenic Train and stop at Wulai Waterfalls</li>
+                  <li>Ride Cable Car to Hsein Resort</li>
+                  <li>Yun Hsein Resort</li>
+                  <li>Ride Wulai Scenic Train back to old street</li>
+                </ul>
+              </li>
+              <li>
+                <time class="trip-hour" datetime="17:00">5:00 PM</time>
+                <span>Ningxia Night Market</span>
+              </li>
+            </ol>
+          </article>
+          <article class="trip-card">
+            <header class="trip-banner">
+              <span>Thursday</span>
+              <time datetime="2027-01-28">Jan 28</time>
+            </header>
+            <h3>North Coast</h3>
+            <figure class="trip-photo">
+              <img src="assets/yehliu-queens-head.jpg" width="540" height="720" loading="lazy" decoding="async" alt="Queen’s Head rock formation at Yehliu Geopark">
+              <figcaption><a href="https://commons.wikimedia.org/wiki/File:Yeliou_queen_rock_formation.JPG" target="_blank" rel="noopener noreferrer">Queen’s Head, Yehliu</a></figcaption>
+            </figure>
+            <ol class="trip-agenda">
+              <li>
+                <span class="trip-hour">10 AM–8:15 PM</span>
+                <ul class="trip-stops">
+                  <li>Tiaoshi Coast Bus Stop</li>
+                  <li>Yehliu</li>
+                  <li>Shifen Old Street</li>
+                  <li>Golden Waterfalls</li>
+                  <li>Yin and Yang Sea</li>
+                  <li>Shuinandong</li>
+                  <li>Jioufen Old Street</li>
+                </ul>
+              </li>
+            </ol>
+          </article>
+          <article class="trip-card">
+            <header class="trip-banner">
+              <span>Friday</span>
+              <time datetime="2027-01-29">Jan 29</time>
+            </header>
+            <h3>Rainbow Village + Monster Village</h3>
+            <ol class="trip-agenda">
+              <li>
+                <time class="trip-hour" datetime="08:00">8:00 AM</time>
+                <span>HSR</span>
+              </li>
+              <li>
+                <span class="trip-hour">8–10 AM</span>
+                <span>2 hours travel to Monster Village</span>
+              </li>
+              <li>
+                <span class="trip-hour">10:30–2:00 PM</span>
+                <span>Monster Village</span>
+              </li>
+              <li>
+                <span class="trip-hour">2:00–4:00 PM</span>
+                <span>2 hours travel to Taichung</span>
+              </li>
+              <li>
+                <span>Taichung Hotel Check in</span>
+              </li>
+            </ol>
+          </article>
+          <article class="trip-card">
+            <header class="trip-banner">
+              <span>Saturday</span>
+              <time datetime="2027-01-30">Jan 30</time>
+            </header>
+            <h3>Alishan</h3>
+            <ol class="trip-agenda">
+              <li>
+                <span class="trip-hour">8 AM–7 PM</span>
+                <span>Alishan from Taichung Tour</span>
+              </li>
+            </ol>
+          </article>
+          <article class="trip-card">
+            <header class="trip-banner">
+              <span>Sunday</span>
+              <time datetime="2027-01-31">Jan 31</time>
+            </header>
+            <h3>Taichung</h3>
+            <ol class="trip-agenda">
+              <li>
+                <span class="trip-hour">9–9:30 AM</span>
+                <span>Anime Street</span>
+              </li>
+              <li>
+                <span class="trip-hour">9:45–10:15 AM</span>
+                <span>Chun Shui Tang original store</span>
+              </li>
+              <li>
+                <span class="trip-hour">10:30 AM–11 AM</span>
+                <span>Miyahara</span>
+              </li>
+              <li>
+                <span class="trip-hour">11 AM–12 PM</span>
+                <span>Lunch</span>
+              </li>
+              <li>
+                <span class="trip-hour">12–4 PM</span>
+                <span>Go toi Chiayi - Meteor Garden&#x27;s Campus<br>National Chung  Cheng University</span>
+              </li>
+              <li>
+                <span class="trip-hour">4 PM–5 PM</span>
+                <span>HSR back to Ximending</span>
+              </li>
+            </ol>
+          </article>
+          <article class="trip-card">
+            <header class="trip-banner">
+              <span>Monday</span>
+              <time datetime="2027-02-01">Feb 1</time>
+            </header>
+            <h3>Outlets &amp; Taipei 101</h3>
+            <ol class="trip-agenda">
+              <li>
+                <span class="trip-hour">11 AM–2 PM</span>
+                <span>Go to Taoyuan - Gloria Outlets</span>
+              </li>
+              <li>
+                <span class="trip-hour">3 PM–6 PM</span>
+                <span>Taipei 101</span>
+              </li>
+              <li>
+                <span>Dinner: Ichiran Ramen</span>
+              </li>
+            </ol>
+          </article>
+          <article class="trip-card">
+            <header class="trip-banner">
+              <span>Tuesday</span>
+              <time datetime="2027-02-02">Feb 2</time>
+            </header>
+            <h3>Heading Home</h3>
+            <ol class="trip-agenda">
+              <li>
+                <time class="trip-hour" datetime="10:30">10:30 AM</time>
+                <span>Leave hotel</span>
+              </li>
+              <li>
+                <time class="trip-hour" datetime="15:40">3:40 PM</time>
+                <span>Fly back</span>
+              </li>
+            </ol>
+          </article>
+        </div>
+      </section>
+    </div>
     <footer>
       Workbook snapshot
       <p id="shared-status" role="status"></p>
@@ -348,6 +759,7 @@
     const textCollator = new Intl.Collator('en', { sensitivity: 'base', numeric: true });
     const tabs = [];
     const panels = [];
+    let lastBudgetTab = 0;
     const updateTables = [];
 
     function element(tag, content = '', className = '') {
@@ -623,8 +1035,12 @@
         tab.setAttribute('aria-selected', selected);
         tab.tabIndex = selected ? 0 : -1;
         panels[position].hidden = !selected;
-        if (!selected) panels[position].querySelector('.purchase-filter').open = false;
+        const openFilter = panels[position].querySelector('.purchase-filter[open]');
+        if (!selected && openFilter) openFilter.open = false;
       });
+      const isItinerary = tabs[index].id === 'tab-itinerary';
+      if (!isItinerary) lastBudgetTab = index;
+      document.querySelector('#shared-status').hidden = isItinerary;
       if (focus) tabs[index].focus();
       if (tabList.getBoundingClientRect().top <= 0) window.scrollTo(0, 0);
     }
@@ -633,12 +1049,13 @@
     const panelList = document.querySelector('#panels');
     const template = document.querySelector('#panel-template');
 
-    tables.forEach((table, index) => {
-      const tab = element('button', table.name, 'tab');
+    function addTab(id, name, panel) {
+      const index = tabs.length;
+      const tab = element('button', name, 'tab');
       tab.type = 'button';
-      tab.id = 'tab-' + table.id;
+      tab.id = 'tab-' + id;
       tab.setAttribute('role', 'tab');
-      tab.setAttribute('aria-controls', 'panel-' + table.id);
+      tab.setAttribute('aria-controls', panel.id);
       tab.addEventListener('click', () => activateTab(index));
       tab.addEventListener('keydown', event => {
         const destinations = {
@@ -652,20 +1069,27 @@
         activateTab(destinations[event.key], true);
       });
 
-      const panel = template.content.firstElementChild.cloneNode(true);
-      panel.id = 'panel-' + table.id;
       panel.setAttribute('aria-labelledby', tab.id);
-      panel.querySelector('table').setAttribute('aria-label', table.name + ' budget breakdown');
-
-      updateTables.push(connectBudgetTable(panel, table));
-
       tabs.push(tab);
       panels.push(panel);
       tabList.append(tab);
       panelList.append(panel);
+    }
+
+    tables.forEach(table => {
+      const panel = template.content.firstElementChild.cloneNode(true);
+      panel.id = 'panel-' + table.id;
+      panel.querySelector('table').setAttribute('aria-label', table.name + ' budget breakdown');
+      updateTables.push(connectBudgetTable(panel, table));
+      addTab(table.id, table.name, panel);
     });
 
-    activateTab(0);
+    addTab('itinerary', 'Itinerary', document.querySelector('#panel-itinerary'));
+    function openLinkedTab() {
+      activateTab(location.hash === '#itinerary' ? tabs.length - 1 : lastBudgetTab);
+    }
+    openLinkedTab();
+    window.addEventListener('hashchange', openLinkedTab);
 
     document.addEventListener('pointerdown', event => {
       const openFilter = document.querySelector('.purchase-filter[open]');
