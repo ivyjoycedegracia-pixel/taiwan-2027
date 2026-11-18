@@ -109,12 +109,9 @@
     <form id="entry-form" method="get" target="_blank" rel="noopener noreferrer">
       <h2 id="form-heading">Add entry</h2>
       <label id="edit-scope-control" hidden>Edit scope
-        <select id="edit-scope">
-          <option value="one">This tab only</option>
-          <option value="all">All 3 tabs</option>
-        </select>
+        <select id="edit-scope"></select>
       </label>
-      <p id="edit-scope-help" class="help" hidden>Fields you change will be applied to the matching row on all three tabs.</p>
+      <p id="edit-scope-help" class="help" hidden>Fields you change will be applied to the selected tabs.</p>
       <label>Item
         <input id="entry-item" maxlength="100" required>
       </label>
@@ -150,7 +147,7 @@
     <p id="admin-status" class="status" role="status"></p>
   </main>
 
-  <script src="taiwan-2027-dashboard-entries.js?v=3"></script>
+  <script src="taiwan-2027-dashboard-entries.js?v=4"></script>
   <script>
     const form = document.querySelector('#entry-form');
     const editEntry = document.querySelector('#edit-entry');
@@ -178,10 +175,10 @@
     const money = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' });
     const groupNames = new Map(checks.map(check => [check.value, check.parentElement.textContent.trim()]));
     const fieldNames = ['Item', 'Details', 'Total / offer', 'Where to buy', 'Per person', 'Apply to'];
-    let directory = new Map();
+    const entries = new Map();
     let trail = null;
     let editing = null;
-    let matchingRows = [];
+    let scopes = [];
     let initialFields = [];
 
     function trailElement(tag, text = '', className = '') {
@@ -205,11 +202,12 @@
     function renderChange(event) {
       const { change, before, after } = event;
       const added = change.action === 'add';
+      const scoped = change.action === 'edit-all' || change.action === 'edit-scope';
       const disclosure = document.createElement('details');
       const name = event.name ?? (after.values[0] || after.values[1]);
       const title = (added ? 'Added' : 'Edited') + ' · ' + name;
       const summary = trailElement('summary', title);
-      if (change.action === 'edit-all') summary.append(' · ' + groupNames.get(after.groups[0]));
+      if (scoped && after.groups.length === 1) summary.append(' · ' + groupNames.get(after.groups[0]));
       summary.append(' ', trailElement('span', '#' + change.number, 'help'));
       const meta = trailElement('p', event.status + ' · ' + change.author + ' · ', 'help trail-meta');
       const parsedDate = Date.parse(change.date);
@@ -227,7 +225,7 @@
       const from = before ? snapshotFields(before) : null;
       const to = snapshotFields(after);
       const fields = trailElement('dl', '', 'trail-fields');
-      const beforeLabel = from && !change.before && change.action !== 'edit-all' ? 'Before (reconstructed)' : 'Before';
+      const beforeLabel = from && !change.before && !scoped ? 'Before (reconstructed)' : 'Before';
       fieldNames.forEach((field, index) => {
         if (from && from[index] === to[index] || added && to[index] === null) return;
         const row = document.createElement('div');
@@ -248,49 +246,52 @@
 
     function renderTrail() {
       if (!trail) return;
-      const targets = scope.value === 'all' ? matchingRows : [editing];
-      const visible = editing ? trail.filter(event => targets.some(target => target.id === event.id)) : trail;
+      const targets = selectedScopes();
+      const visible = editing ? trail.filter(event => targets.some(target => target.id === event.id &&
+        (event.after.groups.includes(target.group) || event.before?.groups.includes(target.group)))) : trail;
       trailCount.textContent = visible.length ? '(' + visible.length + ')' : '';
       trailMessage.textContent = visible.length ? '' : editing ? 'No edits recorded for this entry.' : 'No changes recorded yet.';
       trailMessage.hidden = visible.length > 0;
       trailList.replaceChildren(...visible.map(renderChange));
     }
 
+    function selectedScopes() {
+      return scope.value === 'all' ? scopes : scopes.filter(row => row.group === scope.value);
+    }
+
     function updateScope() {
+      const targets = selectedScopes();
+      const next = targets.find(row => row === editing) ?? targets[0] ?? null;
+      if (next !== editing) {
+        entryFields.forEach((field, index) => { field.value = next?.values[index] ?? ''; });
+        initialFields = entryFields.map(field => field.value);
+      }
+      editing = next;
       scopeHelp.hidden = scope.value !== 'all';
+      const record = editing?.record;
+      groupsFieldset.hidden = Boolean(record && (record.original || targets.length !== scopes.length));
+      for (const check of checks) check.checked = record?.groups.includes(check.value) ?? false;
+      item.required = !editing || Boolean(editing.values[0]);
+      cost.disabled = Boolean(record?.sharedFare);
+      groupHelp.hidden = groupsFieldset.hidden && !record?.sharedFare;
+      if (record?.sharedFare) groupHelp.textContent = 'This row shares the Wulai fare on the cable car row.';
+      else if (editing) groupHelp.textContent = 'New tabs start with the values shown in this form.';
+      else groupHelp.textContent = 'The same per-person amount applies to each selected group.';
       error.textContent = '';
       renderTrail();
     }
 
-    function setEditor(record) {
+    function setEditor(entry) {
       form.reset();
-      error.textContent = '';
-      editing = record;
-      matchingRows = budgetEntries.matchingWorkbookRows(directory, record);
-      scopeControl.hidden = matchingRows.length !== groupNames.size;
-      groupsFieldset.hidden = !scopeControl.hidden;
-      if (!scopeControl.hidden) scope.options[0].textContent = groupNames.get(record.groups[0]) + ' only';
-      heading.textContent = record ? 'Edit entry' : 'Add entry';
-      item.required = !record || Boolean(record.values[0]);
-      editEntry.value = record?.id ?? '';
-      for (const check of checks) {
-        check.checked = record?.groups.includes(check.value) ?? false;
-        check.disabled = Boolean(record?.original);
-      }
-      cost.disabled = Boolean(record?.sharedFare);
-      groupHelp.textContent = record?.sharedFare
-        ? 'This row shares the Wulai fare on the cable car row.'
-        : 'The same per-person amount applies to each selected group.';
-      groupHelp.hidden = Boolean(record?.original && !record.sharedFare);
-      if (record) {
-        const [name, description, offer, vendor, perPerson] = record.values;
-        item.value = name ?? '';
-        details.value = description ?? '';
-        quote.value = offer ?? '';
-        source.value = vendor ?? '';
-        cost.value = perPerson ?? '';
-      }
-      initialFields = entryFields.map(field => field.value);
+      editing = null;
+      scopes = entry ?? [];
+      const options = scopes.map(row => new Option(groupNames.get(row.group), row.group));
+      if (scopes.length === 2) options.push(new Option('Both tabs', 'all'));
+      if (scopes.length === 3) options.push(new Option('All 3 tabs', 'all'));
+      scope.replaceChildren(...options);
+      scopeControl.hidden = !entry;
+      heading.textContent = entry ? 'Edit entry' : 'Add entry';
+      editEntry.value = scopes[0]?.id ?? '';
       updateScope();
     }
 
@@ -307,36 +308,44 @@
       item.focus();
     });
     editEntry.addEventListener('change', () => {
-      setEditor(directory.get(editEntry.value) ?? null);
+      setEditor(entries.get(editEntry.value) ?? null);
       item.focus();
     });
     scope.addEventListener('change', updateScope);
 
-    function buildBatch(values) {
+    function buildScopedEdit(values, selected) {
       const columns = [];
       entryFields.forEach((field, index) => {
         if (!field.disabled && field.value !== initialFields[index] && values[index] !== editing.values[index]) {
           columns.push(index);
         }
       });
-      if (!columns.length) return null;
-      return {
-        action: 'edit-all',
+      const before = editing.record.groups;
+      const manageGroups = !groupsFieldset.hidden;
+      const changedGroups = manageGroups && (selected.length !== before.length ||
+        selected.some(group => !before.includes(group)));
+      if (!columns.length && !changedGroups) return null;
+
+      const targets = [editing, ...selectedScopes().filter(row => row !== editing)];
+      const change = {
+        action: 'edit-scope',
         name: editing.values[0] || editing.values[1],
         columns,
         values: columns.map(column => values[column]),
-        targets: matchingRows.map(record => ({
-          id: record.id,
-          group: record.groups[0],
-          before: columns.map(column => record.values[column])
+        targets: targets.map(row => ({
+          id: row.id,
+          group: row.group,
+          before: columns.map(column => row.values[column])
         }))
       };
+      if (changedGroups) change.membership = { before, after: selected };
+      return change;
     }
 
     form.addEventListener('submit', event => {
       error.textContent = '';
       const selected = checks.filter(check => check.checked).map(check => check.value);
-      if (!selected.length) {
+      if (!groupsFieldset.hidden && !selected.length) {
         event.preventDefault();
         error.textContent = 'Select at least one group.';
         checks[0].focus();
@@ -349,16 +358,11 @@
         source.value.trim() || null,
         cost.value === '' || cost.disabled ? null : cost.valueAsNumber
       ];
-      const all = scope.value === 'all';
-      const change = all ? buildBatch(values) : { action: editing ? 'edit' : 'add', groups: selected, values };
+      const change = editing ? buildScopedEdit(values, selected) : { action: 'add', groups: selected, values };
       if (!change) {
         event.preventDefault();
-        error.textContent = 'Change at least one field before continuing.';
+        error.textContent = 'Make a change before continuing.';
         return;
-      }
-      if (editing && !all) {
-        change.target = editing.id;
-        change.before = { values: editing.values.slice(0, 5), groups: editing.groups };
       }
       if (!budgetEntries.valid(change)) {
         event.preventDefault();
@@ -390,20 +394,15 @@
         const snapshot = new DOMParser().parseFromString(page, 'text/html');
         const tables = JSON.parse(snapshot.querySelector('#workbook-data').textContent);
         const projected = budgetEntries.project(tables, changes, { history: true });
-        directory = projected.directory;
         trail = projected.trail.reverse();
-        const sections = ['Added entries', 'Workbook entries'].map(label => {
-          const section = document.createElement('optgroup');
-          section.label = label;
-          return section;
-        });
-        for (const record of directory.values()) {
-          const labels = record.groups.map(group => groupNames.get(group)).join(', ');
-          const title = record.values[0] || record.values[1];
-          const suffix = record.values[0] && record.values[1] ? ' · ' + record.values[1] : '';
-          sections[Number(Boolean(record.original))].append(new Option(labels + ' · ' + title + suffix, record.id));
+        for (const record of projected.directory.values()) {
+          const rows = budgetEntries.entryScopes(projected.directory, record);
+          const entryId = rows[0].id;
+          if (entries.has(entryId)) continue;
+          entries.set(entryId, rows);
+          const labelParts = [0, 1].map(index => [...new Set(rows.map(row => row.values[index]).filter(Boolean))].join(' / '));
+          editEntry.add(new Option(labelParts.filter(Boolean).join(' · '), entryId));
         }
-        editEntry.append(...sections.filter(section => section.children.length));
         editEntry.disabled = false;
         renderTrail();
       } catch {
