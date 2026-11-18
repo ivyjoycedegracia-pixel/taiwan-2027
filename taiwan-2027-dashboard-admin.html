@@ -108,6 +108,13 @@
 
     <form id="entry-form" method="get" target="_blank" rel="noopener noreferrer">
       <h2 id="form-heading">Add entry</h2>
+      <label id="edit-scope-control" hidden>Edit scope
+        <select id="edit-scope">
+          <option value="one">This tab only</option>
+          <option value="all">All 3 tabs</option>
+        </select>
+      </label>
+      <p id="edit-scope-help" class="help" hidden>Fields you change will be applied to the matching row on all three tabs.</p>
       <label>Item
         <input id="entry-item" maxlength="100" required>
       </label>
@@ -125,7 +132,7 @@
       <label>Per person in PHP <span>(optional)</span>
         <input id="entry-cost" type="number" min="0" step="any" inputmode="decimal">
       </label>
-      <fieldset>
+      <fieldset id="entry-groups-fieldset">
         <legend>Apply to</legend>
         <div id="entry-groups">
           <label><input type="checkbox" value="five"> 5 pax</label>
@@ -143,7 +150,7 @@
     <p id="admin-status" class="status" role="status"></p>
   </main>
 
-  <script src="taiwan-2027-dashboard-entries.js?v=2"></script>
+  <script src="taiwan-2027-dashboard-entries.js?v=3"></script>
   <script>
     const form = document.querySelector('#entry-form');
     const editEntry = document.querySelector('#edit-entry');
@@ -151,12 +158,17 @@
     const error = document.querySelector('#entry-error');
     const status = document.querySelector('#admin-status');
     const groupHelp = document.querySelector('#group-help');
+    const groupsFieldset = document.querySelector('#entry-groups-fieldset');
+    const scopeControl = document.querySelector('#edit-scope-control');
+    const scope = document.querySelector('#edit-scope');
+    const scopeHelp = document.querySelector('#edit-scope-help');
     const checks = [...document.querySelectorAll('#entry-groups input')];
     const item = document.querySelector('#entry-item');
     const details = document.querySelector('#entry-details');
     const quote = document.querySelector('#entry-quote');
     const source = document.querySelector('#entry-source');
     const cost = document.querySelector('#entry-cost');
+    const entryFields = [item, details, quote, source, cost];
     const heading = document.querySelector('#form-heading');
     const submitEntry = form.querySelector('button[type=submit]');
     const trailCount = document.querySelector('#trail-count');
@@ -169,6 +181,8 @@
     let directory = new Map();
     let trail = null;
     let editing = null;
+    let matchingRows = [];
+    let initialFields = [];
 
     function trailElement(tag, text = '', className = '') {
       const element = document.createElement(tag);
@@ -192,9 +206,10 @@
       const { change, before, after } = event;
       const added = change.action === 'add';
       const disclosure = document.createElement('details');
-      const name = after.values[0] || after.values[1];
+      const name = event.name ?? (after.values[0] || after.values[1]);
       const title = (added ? 'Added' : 'Edited') + ' · ' + name;
       const summary = trailElement('summary', title);
+      if (change.action === 'edit-all') summary.append(' · ' + groupNames.get(after.groups[0]));
       summary.append(' ', trailElement('span', '#' + change.number, 'help'));
       const meta = trailElement('p', event.status + ' · ' + change.author + ' · ', 'help trail-meta');
       const parsedDate = Date.parse(change.date);
@@ -212,7 +227,7 @@
       const from = before ? snapshotFields(before) : null;
       const to = snapshotFields(after);
       const fields = trailElement('dl', '', 'trail-fields');
-      const beforeLabel = from && !change.before ? 'Before (reconstructed)' : 'Before';
+      const beforeLabel = from && !change.before && change.action !== 'edit-all' ? 'Before (reconstructed)' : 'Before';
       fieldNames.forEach((field, index) => {
         if (from && from[index] === to[index] || added && to[index] === null) return;
         const row = document.createElement('div');
@@ -233,17 +248,28 @@
 
     function renderTrail() {
       if (!trail) return;
-      const visible = editing ? trail.filter(event => event.id === editing.id) : trail;
+      const targets = scope.value === 'all' ? matchingRows : [editing];
+      const visible = editing ? trail.filter(event => targets.some(target => target.id === event.id)) : trail;
       trailCount.textContent = visible.length ? '(' + visible.length + ')' : '';
       trailMessage.textContent = visible.length ? '' : editing ? 'No edits recorded for this entry.' : 'No changes recorded yet.';
       trailMessage.hidden = visible.length > 0;
       trailList.replaceChildren(...visible.map(renderChange));
     }
 
+    function updateScope() {
+      scopeHelp.hidden = scope.value !== 'all';
+      error.textContent = '';
+      renderTrail();
+    }
+
     function setEditor(record) {
       form.reset();
       error.textContent = '';
       editing = record;
+      matchingRows = budgetEntries.matchingWorkbookRows(directory, record);
+      scopeControl.hidden = matchingRows.length !== groupNames.size;
+      groupsFieldset.hidden = !scopeControl.hidden;
+      if (!scopeControl.hidden) scope.options[0].textContent = groupNames.get(record.groups[0]) + ' only';
       heading.textContent = record ? 'Edit entry' : 'Add entry';
       item.required = !record || Boolean(record.values[0]);
       editEntry.value = record?.id ?? '';
@@ -264,7 +290,8 @@
         source.value = vendor ?? '';
         cost.value = perPerson ?? '';
       }
-      renderTrail();
+      initialFields = entryFields.map(field => field.value);
+      updateScope();
     }
 
     function quoteValue(value) {
@@ -283,6 +310,28 @@
       setEditor(directory.get(editEntry.value) ?? null);
       item.focus();
     });
+    scope.addEventListener('change', updateScope);
+
+    function buildBatch(values) {
+      const columns = [];
+      entryFields.forEach((field, index) => {
+        if (!field.disabled && field.value !== initialFields[index] && values[index] !== editing.values[index]) {
+          columns.push(index);
+        }
+      });
+      if (!columns.length) return null;
+      return {
+        action: 'edit-all',
+        name: editing.values[0] || editing.values[1],
+        columns,
+        values: columns.map(column => values[column]),
+        targets: matchingRows.map(record => ({
+          id: record.id,
+          group: record.groups[0],
+          before: columns.map(column => record.values[column])
+        }))
+      };
+    }
 
     form.addEventListener('submit', event => {
       error.textContent = '';
@@ -293,18 +342,21 @@
         checks[0].focus();
         return;
       }
-      const change = {
-        action: editing ? 'edit' : 'add',
-        groups: selected,
-        values: [
-          item.value.trim() || null,
-          details.value.trim() || null,
-          quoteValue(quote.value),
-          source.value.trim() || null,
-          cost.value === '' || cost.disabled ? null : cost.valueAsNumber
-        ]
-      };
-      if (editing) {
+      const values = [
+        item.value.trim() || null,
+        details.value.trim() || null,
+        quoteValue(quote.value),
+        source.value.trim() || null,
+        cost.value === '' || cost.disabled ? null : cost.valueAsNumber
+      ];
+      const all = scope.value === 'all';
+      const change = all ? buildBatch(values) : { action: editing ? 'edit' : 'add', groups: selected, values };
+      if (!change) {
+        event.preventDefault();
+        error.textContent = 'Change at least one field before continuing.';
+        return;
+      }
+      if (editing && !all) {
         change.target = editing.id;
         change.before = { values: editing.values.slice(0, 5), groups: editing.groups };
       }
@@ -314,7 +366,7 @@
         item.focus();
         return;
       }
-      const next = budgetEntries.compose(change, (change.values[0] || change.values[1]).slice(0, 100));
+      const next = budgetEntries.compose(change, (change.name ?? (values[0] || values[1])).slice(0, 100));
       if (next.href.length > 7500) {
         event.preventDefault();
         error.textContent = 'Shorten the details before continuing.';
@@ -363,6 +415,7 @@
     if (typeof budgetEntries === 'undefined') {
       status.textContent = 'The editor is temporarily unavailable. Reload this page to retry.';
       trailMessage.textContent = 'The edit trail is temporarily unavailable.';
+      addEntry.disabled = true;
     } else {
       submitEntry.disabled = false;
       loadEditor();

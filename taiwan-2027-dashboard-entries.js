@@ -17,17 +17,38 @@ const budgetEntries = (() => {
       value >= 0 && value <= Number.MAX_SAFE_INTEGER / 100;
   }
 
+  const fieldChecks = [
+    value => textField(value, 100),
+    value => textField(value, 400),
+    value => amount(value) || textField(value, 100),
+    value => textField(value, 70),
+    value => value === null || amount(value)
+  ];
+
   function validSnapshot(snapshot) {
     if (!snapshot || !Array.isArray(snapshot.values) || snapshot.values.length !== 5 ||
         !Array.isArray(snapshot.groups) || snapshot.groups.length === 0 ||
         snapshot.groups.length > groups.size || !snapshot.groups.every(group => groups.has(group))) return false;
 
-    const [item, details, quote, source, perPerson] = snapshot.values;
-    return textField(item, 100) && textField(details, 400) && textField(source, 70) &&
-      (amount(quote) || textField(quote, 100)) && (perPerson === null || amount(perPerson));
+    return snapshot.values.every((value, index) => fieldChecks[index](value));
+  }
+
+  function validBatch(change) {
+    const { columns, values, targets, name } = change;
+    if (!Array.isArray(columns) || !columns.length || new Set(columns).size !== columns.length ||
+        !columns.every(index => Number.isInteger(index) && index >= 0 && index < fieldChecks.length)) return false;
+
+    const validFields = fields => Array.isArray(fields) && fields.length === columns.length &&
+      fields.every((value, index) => fieldChecks[columns[index]](value));
+    return validFields(values) && typeof name === 'string' && textField(name, 400) &&
+      Array.isArray(targets) && targets.length === groups.size &&
+      targets.every(target => target && groups.has(target.group) &&
+        typeof target.id === 'string' && target.id.length <= 550 && validFields(target.before)) &&
+      new Set(targets.map(target => target.group)).size === groups.size;
   }
 
   function valid(change) {
+    if (change?.action === 'edit-all') return validBatch(change);
     if (!validSnapshot(change)) return false;
     const [item, details] = change.values;
     if (change.action === 'add') return Boolean(item);
@@ -82,7 +103,8 @@ const budgetEntries = (() => {
   }
 
   function compose(change, name) {
-    const title = 'Budget ' + (change.action === 'add' ? 'entry: ' : 'edit: ') + name;
+    const suffix = change.action === 'edit-all' ? ' (all 3 tabs)' : '';
+    const title = 'Budget ' + (change.action === 'add' ? 'entry: ' : 'edit: ') + name + suffix;
     const body = [
       marker, '', '```json', JSON.stringify(change), '```', '',
       '[Return to the dashboard admin page](' + adminUrl + ')'
@@ -92,12 +114,59 @@ const budgetEntries = (() => {
     return url;
   }
 
+  function workbookId(group, values) {
+    return 'workbook:' + JSON.stringify([group, ...values.slice(0, 2)]);
+  }
+
+  function matchingWorkbookRows(directory, record) {
+    if (!record?.original) return [];
+    const [item] = record.original;
+    if (item) {
+      const sameItem = [...directory.values()].filter(row => row.original?.[0] === item);
+      const byGroup = [...groups].map(group => sameItem.filter(row => row.groups[0] === group));
+      if (byGroup.every(rows => rows.length === 1)) return byGroup.map(([row]) => row);
+    }
+    return [...groups].map(group => directory.get(workbookId(group, record.original))).filter(Boolean);
+  }
+
+  function applyBatch(change, directory, trail) {
+    const rows = change.targets.map(target => {
+      const record = directory.get(target.id);
+      const after = record ? record.values.slice(0, 5) : Array(5).fill(null);
+      const before = after.slice();
+      change.columns.forEach((column, index) => {
+        before[column] = target.before[index];
+        after[column] = change.values[index];
+      });
+      return { target, record, before, after };
+    });
+    const matches = matchingWorkbookRows(directory, rows[0].record);
+    const canApply = matches.length === groups.size && rows.every(({ target, record, after }) =>
+      matches.includes(record) && record.groups[0] === target.group &&
+      (after[0] || after[1]) && !(record.sharedFare && change.columns.includes(4)));
+
+    let status = 'Not applied';
+    if (change.state === 'closed') status = 'Withdrawn';
+    else if (canApply) status = 'Published';
+    for (const { target, record, before, after } of rows) {
+      if (trail) {
+        const rowGroups = [target.group];
+        trail.push({
+          id: target.id, name: after[0] || after[1] || change.name, change, status,
+          before: { values: before, groups: rowGroups },
+          after: { values: after, groups: rowGroups }
+        });
+      }
+      if (status === 'Published') record.values = [...after, record.original[5]];
+    }
+  }
+
   function project(tables, changes, { history = false } = {}) {
     const directory = new Map();
     const workbook = new Map();
     for (const table of tables) {
       const records = table.rows.map((values, index) => {
-        const id = 'workbook:' + JSON.stringify([table.id, ...values.slice(0, 2)]);
+        const id = workbookId(table.id, values);
         const record = {
           id, values, groups: [table.id], original: values,
           sharedFare: index === table.mergedCostRow + 1
@@ -114,6 +183,10 @@ const budgetEntries = (() => {
     for (const change of [...changes].sort((a, b) => a.number - b.number)) {
       if (seen.has(change.number)) continue;
       seen.add(change.number);
+      if (change.action === 'edit-all') {
+        applyBatch(change, directory, history ? trail : null);
+        continue;
+      }
       const isAdd = change.action === 'add';
       const id = isAdd ? 'entry:' + change.number : change.target;
       const record = directory.get(id);
@@ -161,5 +234,5 @@ const budgetEntries = (() => {
     };
   }
 
-  return { compose, load, project, valid };
+  return { compose, load, matchingWorkbookRows, project, valid };
 })();
