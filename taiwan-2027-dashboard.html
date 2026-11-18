@@ -574,15 +574,10 @@
       });
 
       filter.addEventListener('keydown', event => {
-        if (!filter.open) return;
-        if (event.key === 'Escape') {
-          filter.open = false;
-          filterSummary.focus();
-        } else if (event.key === 'Tab') {
-          requestAnimationFrame(() => {
-            if (!filter.contains(document.activeElement)) filter.open = false;
-          });
-        }
+        if (event.key !== 'Tab' || !filter.open) return;
+        requestAnimationFrame(() => {
+          if (!filter.contains(document.activeElement)) filter.open = false;
+        });
       });
       sortField.addEventListener('change', () => {
         if (sortField.value === '') setSort('');
@@ -675,6 +670,13 @@
     document.addEventListener('pointerdown', event => {
       const openFilter = document.querySelector('.purchase-filter[open]');
       if (openFilter && !openFilter.contains(event.target)) openFilter.open = false;
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key !== 'Escape') return;
+      const openFilter = document.querySelector('.purchase-filter[open]');
+      if (!openFilter) return;
+      openFilter.open = false;
+      openFilter.querySelector('summary').focus();
     });
 
     if (typeof budgetEntries !== 'undefined') {
