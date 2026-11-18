@@ -115,6 +115,21 @@
     .amount { font-variant-numeric: tabular-nums; white-space: nowrap; }
     .breakdown-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
     .row-count { color: var(--muted); font-size: 12px; text-align: right; }
+    .filtered-subtotal {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 4px 12px;
+      margin-top: 12px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--surface) 92%, #369b73);
+      font-size: 13px;
+      font-weight: 650;
+    }
+    .filtered-subtotal .amount { font-size: 17px; }
     .table-controls { display: flex; align-items: end; gap: 12px; margin-top: 12px; }
     .filter-control { flex: 1; min-width: 0; max-width: 220px; }
     .control-label { display: block; margin-bottom: 4px; color: var(--muted); font-size: 12px; font-weight: 650; }
@@ -266,6 +281,10 @@
         <h2>Budget breakdown</h2>
         <p class="row-count" role="status"></p>
       </div>
+      <p class="filtered-subtotal" role="status" hidden>
+        <span>Filtered subtotal per person</span>
+        <strong class="amount"></strong>
+      </p>
       <div class="table-controls">
         <div class="filter-control">
           <span class="control-label">Where to buy</span>
@@ -342,6 +361,12 @@
       return typeof value === 'number' ? currency.format(value) : value;
     }
 
+    function displayedCents(amount) {
+      return Number(currency.formatToParts(amount)
+        .filter(({ type }) => ['integer', 'fraction', 'minusSign'].includes(type))
+        .map(({ value }) => value).join(''));
+    }
+
     function addLargestCosts(container, table) {
       container.replaceChildren();
       const largest = table.rows.filter(row => typeof row[4] === 'number')
@@ -396,6 +421,8 @@
       const sortButtons = panel.querySelectorAll('.sort-button');
       const headers = [...panel.querySelectorAll('thead th')];
       const rowCount = panel.querySelector('.row-count');
+      const subtotal = panel.querySelector('.filtered-subtotal');
+      const subtotalAmount = subtotal.querySelector('.amount');
       const body = panel.querySelector('tbody');
       let rows, fare, continuation, fareCell, sharedCell;
 
@@ -421,7 +448,18 @@
       });
 
       function updateRows() {
-        const displayed = rows.filter(row => !selectedSources.size || selectedSources.has(row.values[3]));
+        const filtered = selectedSources.size > 0;
+        const displayed = rows.filter(row => !filtered || selectedSources.has(row.values[3]));
+        subtotal.hidden = !filtered;
+        if (filtered) {
+          const cents = displayed.reduce((sum, { values }) => {
+            const amount = values[4];
+            return typeof amount === 'number' ? sum + displayedCents(amount) : sum;
+          }, 0);
+          const total = currency.format(cents / 100);
+          if (subtotalAmount.textContent !== total) subtotalAmount.textContent = total;
+        }
+
         if (sortColumn !== '') {
           const sign = direction === 'ascending' ? 1 : -1;
           const sortValue = row => sortColumn === '4' && row === continuation
