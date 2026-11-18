@@ -233,116 +233,186 @@
     footer { margin-top: 15px; font-size: 12px; color: var(--muted); }
 
     .trip-board {
-      --trip-ink: #164e41;
-      --trip-paper: #ffe18c;
-      --trip-orange: #ff995f;
-      --trip-mint: #e4f7e8;
+      --trip-ink: #18382e;
+      --trip-jade: #163f34;
+      --trip-vermilion: #a43b2b;
+      --trip-paper: #f3ebdb;
+      --trip-card: #fffaf0;
+      --trip-line: #d9cbb6;
+      --trip-serif: Georgia, 'Noto Serif TC', 'Songti TC', 'PMingLiU', serif;
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       align-items: start;
-      gap: 35px 16px;
-      padding: 34px 18px 20px;
+      gap: 18px;
+      padding: clamp(12px, 3.2vw, 30px);
+      border: 1px solid var(--trip-line);
       border-radius: 16px;
-      background: #c9e8f8;
+      background: var(--trip-paper);
       color: var(--trip-ink);
+      color-scheme: light;
     }
-    .trip-board a { color: var(--trip-ink); }
-    .trip-cover { position: relative; isolation: isolate; padding: 3px 6px 0; }
-    .trip-cover::before {
-      position: absolute;
-      z-index: -1;
-      inset: 2px auto auto 7%;
-      width: 77%;
-      height: 138px;
-      content: '';
-      border-radius: 28px;
-      background: repeating-linear-gradient(90deg, #ffd367bb 0 26px, transparent 26px 32px);
-      transform: skew(24deg) rotate(-11deg);
+    .trip-board a { color: var(--trip-jade); }
+    .trip-board :focus-visible { outline-color: var(--trip-vermilion); }
+    .trip-cover, .trip-predeparture, .trip-section-title, .trip-credits { grid-column: 1 / -1; }
+    .trip-cover {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+      overflow: hidden;
+      border-radius: 10px;
+      background: var(--trip-jade);
+      color: #fff4dd;
+    }
+    .trip-cover-copy {
+      display: grid;
+      align-content: center;
+      justify-items: start;
+      gap: 18px;
+      padding: clamp(22px, 4vw, 44px);
+      background-image: repeating-linear-gradient(135deg, transparent 0 11px, #ffffff0b 11px 12px);
     }
     .trip-cover h2 {
-      margin: 0 0 9px;
-      font: 900 clamp(47px, 7vw, 76px)/.88 'Arial Rounded MT Bold', 'Trebuchet MS', system-ui, sans-serif;
-      letter-spacing: -.07em;
-      text-transform: uppercase;
+      font: 400 clamp(24px, 4.4vw, 46px)/1.1 var(--trip-serif);
+      letter-spacing: -.025em;
     }
-    .trip-cover h2 span { display: block; }
-    .trip-range { width: fit-content; padding: 3px 9px; border-radius: 5px; background: var(--trip-mint); font-weight: 750; }
-    .trip-predeparture { margin-top: 18px; padding: 13px 14px; border-left: 4px solid #e47b40; border-radius: 8px; background: var(--trip-mint); }
-    .trip-predeparture h3 { font-size: 16px; }
-    .trip-predeparture ul { list-style: none; margin: 6px 0 0; padding: 0; }
-    .trip-predeparture li { padding: 5px 0; border-top: 1px solid #164e4126; }
-    .trip-predeparture li span { display: block; font-size: 12px; }
-    .trip-card { min-width: 0; padding: 0 14px 13px; border-radius: 9px; background: var(--trip-paper); }
-    .trip-banner {
-      width: fit-content;
-      margin: -16px auto 11px;
-      padding: 8px 16px 6px;
-      border-radius: 6px 6px 4px 4px;
-      background: var(--trip-orange);
-      background-image: radial-gradient(#78391540 1.5px, transparent 2px);
-      background-size: 12px 12px;
-      text-align: center;
-      transform: rotate(-2deg);
-    }
-    .trip-card:nth-of-type(even) .trip-banner {
-      background-image: linear-gradient(#78391530 1px, transparent 1px), linear-gradient(90deg, #78391530 1px, transparent 1px);
-      background-size: 12px 12px;
-      transform: rotate(2deg);
-    }
-    .trip-banner > span {
+    .trip-cover h2 span {
       display: block;
-      padding: 0 4px;
-      color: #392815;
-      font: 850 19px/1.25 'Arial Rounded MT Bold', 'Trebuchet MS', system-ui, sans-serif;
-      text-transform: uppercase;
+      color: #ffdf9c;
+      font-size: clamp(62px, 9vw, 108px);
+      letter-spacing: .05em;
+      line-height: 1.12;
     }
-    .trip-banner time {
-      display: inline-block;
-      margin-top: 2px;
-      padding: 2px 8px;
-      border-radius: 3px;
-      background: #195949;
-      color: #fff;
+    .trip-range {
+      padding: 5px 9px;
+      border: 1px solid #e5c67e;
+      border-radius: 4px;
+      color: #ffdf9c;
       font-size: 12px;
-      font-weight: 750;
-      text-transform: uppercase;
+      font-weight: 700;
     }
-    .trip-card h3 {
-      width: fit-content;
-      margin: 0 auto 10px;
-      padding: 3px 8px;
-      border-radius: 5px;
-      background: var(--trip-mint);
-      font-size: 17px;
-      line-height: 1.2;
-      text-align: center;
+    .trip-skyline { position: relative; margin: 0; min-height: 240px; }
+    .trip-skyline img { position: absolute; width: 100%; height: 100%; object-fit: cover; object-position: 55% 50%; }
+    .trip-skyline figcaption {
+      position: absolute;
+      right: 12px;
+      bottom: 12px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      background: var(--trip-jade);
+      color: #fff4dd;
+      font-size: 12px;
     }
-    .trip-agenda { list-style: none; margin: 0; padding: 0; }
-    .trip-agenda > li {
+    .trip-predeparture {
+      padding: 14px 17px 16px;
+      border: 1px solid var(--trip-line);
+      border-left: 4px solid var(--trip-vermilion);
+      border-radius: 8px;
+      background: var(--trip-card);
+    }
+    .trip-predeparture h3 { font: 700 20px/1.2 var(--trip-serif); }
+    .trip-predeparture h3 span { margin-inline-end: 5px; color: var(--trip-vermilion); }
+    .trip-predeparture ul {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 185px), 1fr));
+      gap: 9px 15px;
+      list-style: none;
+      margin: 10px 0 0;
+      padding: 0;
+    }
+    .trip-predeparture li { padding-top: 7px; border-top: 1px solid var(--trip-line); }
+    .trip-predeparture li span { display: block; font-size: 12px; }
+    .trip-section-title {
       display: flex;
-      flex-wrap: wrap;
-      align-items: baseline;
-      gap: 4px 7px;
-      padding: 6px 0;
-      border-top: 1px solid #164e4126;
-      font-size: 13px;
-      line-height: 1.35;
+      align-items: center;
+      gap: 12px;
+      margin-top: 4px;
+      font: 700 20px/1.25 var(--trip-serif);
     }
-    .trip-agenda > li > :last-child { flex: 1 0 142px; }
-    .trip-hour { padding: 2px 6px; border-radius: 4px; background: #ffc79d; color: #543019; font-weight: 750; font-size: 11px; }
+    .trip-section-title::after { content: ''; flex: 1; border-top: 1px solid var(--trip-line); }
+    .trip-section-title span { color: var(--trip-vermilion); }
+    .trip-card {
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid var(--trip-line);
+      border-radius: 9px;
+      background: var(--trip-card);
+      box-shadow: 0 2px 0 #603c1910;
+    }
+    .trip-banner {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: center;
+      gap: 13px;
+      min-height: 97px;
+      padding: 12px 14px;
+      background: var(--trip-jade);
+      color: #fff4dd;
+    }
+    .trip-card:has(.trip-photo) .trip-banner { background: var(--trip-vermilion); }
+    .trip-day {
+      display: grid;
+      min-width: 78px;
+      align-self: stretch;
+      align-content: center;
+      gap: 2px;
+      padding-right: 12px;
+      border-right: 1px dashed #fff4dda0;
+    }
+    .trip-day span { font-size: 11px; }
+    .trip-day time { font-weight: 750; font-size: 16px; white-space: nowrap; }
+    .trip-card h3 { font: 700 17px/1.25 var(--trip-serif); }
+    .trip-card h3 span { display: block; margin-bottom: 3px; color: #ffdf9c; font-size: 21px; }
+    .trip-agenda { list-style: none; margin: 0; padding: 6px 14px 10px; }
+    .trip-agenda > li {
+      display: grid;
+      grid-template-columns: 108px minmax(0, 1fr);
+      align-items: baseline;
+      gap: 8px;
+      padding: 8px 0;
+      border-top: 1px solid var(--trip-line);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .trip-agenda > li:first-child { border-top: 0; }
+    .trip-agenda > li > :only-child { grid-column: 2; }
+    .trip-hour {
+      width: fit-content;
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: #f1e6ce;
+      color: #563517;
+      font-size: 11px;
+      font-weight: 750;
+      font-variant-numeric: tabular-nums;
+    }
     .trip-activity strong, .trip-activity span { display: block; }
     .trip-agenda ul { margin: 0; padding-inline-start: 17px; }
     .trip-agenda ul li + li { margin-top: 3px; }
-    .trip-photo { width: min(190px, 90%); margin: 2px auto 12px; padding: 5px; background: var(--trip-mint); border-radius: 4px; transform: rotate(-3deg); }
-    .trip-photo img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; object-position: 50% 46%; }
-    .trip-photo figcaption { font-size: 11px; text-align: center; margin-top: 4px; }
-
-    @media (max-width: 930px) {
-      .trip-board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .trip-photo { position: relative; margin: 0; }
+    .trip-photo img { display: block; width: 100%; height: clamp(136px, 23vw, 192px); object-fit: cover; }
+    .trip-photo--yehliu img { height: clamp(200px, 35vw, 250px); object-position: 50% 36%; }
+    .trip-photo figcaption {
+      position: absolute;
+      left: 9px;
+      bottom: 8px;
+      padding: 3px 7px;
+      border-radius: 4px;
+      background: var(--trip-card);
+      color: var(--trip-ink);
+      font-size: 11px;
     }
-    @media (max-width: 590px) {
-      .trip-board { grid-template-columns: minmax(0, 1fr); padding: 22px 13px 14px; }
-      .trip-cover { max-width: 380px; }
+    .trip-credits { padding: 8px 0 0; border-top: 1px solid var(--trip-line); font-size: 12px; }
+    .trip-credits summary { width: fit-content; cursor: pointer; }
+    .trip-credits ul { margin: 8px 0 0; padding-inline-start: 18px; }
+    .trip-credits li + li { margin-top: 5px; }
+
+    @media (max-width: 650px) {
+      .trip-board { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+      .trip-cover { grid-template-columns: minmax(0, 1fr); }
+      .trip-cover-copy { gap: 12px; }
+      .trip-skyline { min-height: 0; aspect-ratio: 1.85; }
+    }
+    @media (max-width: 360px) {
+      .trip-agenda > li { grid-template-columns: 86px minmax(0, 1fr); }
     }
 
     @media (max-width: 630px) {
@@ -375,25 +445,34 @@
       <section id="panel-itinerary" role="tabpanel" tabindex="0" hidden>
         <div class="trip-board">
           <header class="trip-cover">
-            <h2>Taiwan <span>trip</span></h2>
-            <p class="trip-range"><time datetime="2027-01-23">Jan 23</time> – <time datetime="2027-02-02">Feb 2, 2027</time></p>
-            <section class="trip-predeparture">
-              <h3>Before departure</h3>
-              <ul>
-                <li><strong>Online Check In - Starlux</strong><span>Online Check in a day before</span></li>
-                <li><strong>EGov</strong><span>Register trip and pay travel tax</span></li>
-                <li><a href="https://twac.immigration.gov.tw/submit" target="_blank" rel="noopener noreferrer">Taiwan arrival sign up</a></li>
-                <li><a href="https://5000.taiwan.net.tw/index_en.html" target="_blank" rel="noopener noreferrer">Taiwan Luckyland</a></li>
-                <li><strong>Travel Insurance</strong><span>secure travel insurance GCash</span></li>
-              </ul>
-            </section>
+            <div class="trip-cover-copy">
+              <h2><span lang="zh-Hant">台灣</span> Taiwan itinerary</h2>
+              <p class="trip-range"><time datetime="2027-01-23">Jan 23</time> to <time datetime="2027-02-02">Feb 2, 2027</time></p>
+            </div>
+            <figure class="trip-skyline">
+              <img src="assets/taipei-skyline.webp" width="960" height="630" loading="lazy" decoding="async" alt="Taipei 101 above the city skyline at dusk">
+              <figcaption><span lang="zh-Hant">台北</span> · Taipei</figcaption>
+            </figure>
           </header>
+          <section class="trip-predeparture">
+            <h3><span lang="zh-Hant">行前準備</span> Before departure</h3>
+            <ul>
+              <li><strong>Online Check In - Starlux</strong><span>Online Check in a day before</span></li>
+              <li><strong>EGov</strong><span>Register trip and pay travel tax</span></li>
+              <li><a href="https://twac.immigration.gov.tw/submit" target="_blank" rel="noopener noreferrer">Taiwan arrival sign up</a></li>
+              <li><a href="https://5000.taiwan.net.tw/index_en.html" target="_blank" rel="noopener noreferrer">Taiwan Luckyland</a></li>
+              <li><strong>Travel Insurance</strong><span>secure travel insurance GCash</span></li>
+            </ul>
+          </section>
+          <h3 class="trip-section-title"><span lang="zh-Hant">每日行程</span> Day by day</h3>
           <article class="trip-card">
             <header class="trip-banner">
-              <span>Saturday</span>
-              <time datetime="2027-01-23">Jan 23</time>
+              <div class="trip-day">
+                <time datetime="2027-01-23">Jan 23</time>
+                <span>Saturday</span>
+              </div>
+              <h3><span lang="zh-Hant">抵達台灣</span>Arrival</h3>
             </header>
-            <h3>Arrival</h3>
             <ol class="trip-agenda">
               <li>
                 <time class="trip-hour" datetime="05:30">5:30 AM</time>
@@ -435,10 +514,12 @@
           </article>
           <article class="trip-card">
             <header class="trip-banner">
-              <span>Sunday</span>
-              <time datetime="2027-01-24">Jan 24</time>
+              <div class="trip-day">
+                <time datetime="2027-01-24">Jan 24</time>
+                <span>Sunday</span>
+              </div>
+              <h3><span lang="zh-Hant">台北</span>Taipei</h3>
             </header>
-            <h3>Taipei</h3>
             <ol class="trip-agenda">
               <li>
                 <time class="trip-hour" datetime="08:00">8:00 AM</time>
@@ -464,10 +545,16 @@
           </article>
           <article class="trip-card">
             <header class="trip-banner">
-              <span>Monday</span>
-              <time datetime="2027-01-25">Jan 25</time>
+              <div class="trip-day">
+                <time datetime="2027-01-25">Jan 25</time>
+                <span>Monday</span>
+              </div>
+              <h3><span lang="zh-Hant">合歡山</span>Snow Mountain</h3>
             </header>
-            <h3>Snow Mountain</h3>
+            <figure class="trip-photo">
+              <img src="assets/hehuanshan-winter.webp" width="720" height="480" loading="lazy" decoding="async" alt="Snow on the slopes of Hehuanshan">
+              <figcaption>Hehuanshan in winter</figcaption>
+            </figure>
             <ol class="trip-agenda">
               <li>
                 <span class="trip-hour">6:30 AM–6:30 PM</span>
@@ -484,10 +571,12 @@
           </article>
           <article class="trip-card">
             <header class="trip-banner">
-              <span>Tuesday</span>
-              <time datetime="2027-01-26">Jan 26</time>
+              <div class="trip-day">
+                <time datetime="2027-01-26">Jan 26</time>
+                <span>Tuesday</span>
+              </div>
+              <h3><span lang="zh-Hant">北投溫泉與陽明山</span>Beitou Hot Springs &amp; Yangmingshan</h3>
             </header>
-            <h3>Beitou Hot Springs &amp; Yangmingshan</h3>
             <ol class="trip-agenda">
               <li>
                 <time class="trip-hour" datetime="07:30">7:30 AM</time>
@@ -501,10 +590,12 @@
           </article>
           <article class="trip-card">
             <header class="trip-banner">
-              <span>Wednesday</span>
-              <time datetime="2027-01-27">Jan 27</time>
+              <div class="trip-day">
+                <time datetime="2027-01-27">Jan 27</time>
+                <span>Wednesday</span>
+              </div>
+              <h3><span lang="zh-Hant">烏來</span>Wulai</h3>
             </header>
-            <h3>Wulai</h3>
             <ol class="trip-agenda">
               <li>
                 <time class="trip-hour" datetime="09:00">9:00 AM</time>
@@ -533,13 +624,15 @@
           </article>
           <article class="trip-card">
             <header class="trip-banner">
-              <span>Thursday</span>
-              <time datetime="2027-01-28">Jan 28</time>
+              <div class="trip-day">
+                <time datetime="2027-01-28">Jan 28</time>
+                <span>Thursday</span>
+              </div>
+              <h3><span lang="zh-Hant">北海岸</span>North Coast</h3>
             </header>
-            <h3>North Coast</h3>
-            <figure class="trip-photo">
+            <figure class="trip-photo trip-photo--yehliu">
               <img src="assets/yehliu-queens-head.jpg" width="540" height="720" loading="lazy" decoding="async" alt="Queen’s Head rock formation at Yehliu Geopark">
-              <figcaption><a href="https://commons.wikimedia.org/wiki/File:Yeliou_queen_rock_formation.JPG" target="_blank" rel="noopener noreferrer">Queen’s Head, Yehliu</a></figcaption>
+              <figcaption>Queen’s Head, Yehliu</figcaption>
             </figure>
             <ol class="trip-agenda">
               <li>
@@ -558,10 +651,12 @@
           </article>
           <article class="trip-card">
             <header class="trip-banner">
-              <span>Friday</span>
-              <time datetime="2027-01-29">Jan 29</time>
+              <div class="trip-day">
+                <time datetime="2027-01-29">Jan 29</time>
+                <span>Friday</span>
+              </div>
+              <h3><span lang="zh-Hant">彩虹眷村與妖怪村</span>Rainbow Village + Monster Village</h3>
             </header>
-            <h3>Rainbow Village + Monster Village</h3>
             <ol class="trip-agenda">
               <li>
                 <time class="trip-hour" datetime="08:00">8:00 AM</time>
@@ -586,10 +681,16 @@
           </article>
           <article class="trip-card">
             <header class="trip-banner">
-              <span>Saturday</span>
-              <time datetime="2027-01-30">Jan 30</time>
+              <div class="trip-day">
+                <time datetime="2027-01-30">Jan 30</time>
+                <span>Saturday</span>
+              </div>
+              <h3><span lang="zh-Hant">阿里山</span>Alishan</h3>
             </header>
-            <h3>Alishan</h3>
+            <figure class="trip-photo">
+              <img src="assets/alishan-railway.webp" width="720" height="405" loading="lazy" decoding="async" alt="Steam locomotive on the Alishan Forest Railway">
+              <figcaption>Alishan Forest Railway</figcaption>
+            </figure>
             <ol class="trip-agenda">
               <li>
                 <span class="trip-hour">8 AM–7 PM</span>
@@ -599,10 +700,12 @@
           </article>
           <article class="trip-card">
             <header class="trip-banner">
-              <span>Sunday</span>
-              <time datetime="2027-01-31">Jan 31</time>
+              <div class="trip-day">
+                <time datetime="2027-01-31">Jan 31</time>
+                <span>Sunday</span>
+              </div>
+              <h3><span lang="zh-Hant">台中</span>Taichung</h3>
             </header>
-            <h3>Taichung</h3>
             <ol class="trip-agenda">
               <li>
                 <span class="trip-hour">9–9:30 AM</span>
@@ -632,10 +735,12 @@
           </article>
           <article class="trip-card">
             <header class="trip-banner">
-              <span>Monday</span>
-              <time datetime="2027-02-01">Feb 1</time>
+              <div class="trip-day">
+                <time datetime="2027-02-01">Feb 1</time>
+                <span>Monday</span>
+              </div>
+              <h3><span lang="zh-Hant">華泰名品城與台北101</span>Outlets &amp; Taipei 101</h3>
             </header>
-            <h3>Outlets &amp; Taipei 101</h3>
             <ol class="trip-agenda">
               <li>
                 <span class="trip-hour">11 AM–2 PM</span>
@@ -652,10 +757,12 @@
           </article>
           <article class="trip-card">
             <header class="trip-banner">
-              <span>Tuesday</span>
-              <time datetime="2027-02-02">Feb 2</time>
+              <div class="trip-day">
+                <time datetime="2027-02-02">Feb 2</time>
+                <span>Tuesday</span>
+              </div>
+              <h3><span lang="zh-Hant">返程</span>Heading Home</h3>
             </header>
-            <h3>Heading Home</h3>
             <ol class="trip-agenda">
               <li>
                 <time class="trip-hour" datetime="10:30">10:30 AM</time>
@@ -667,6 +774,15 @@
               </li>
             </ol>
           </article>
+          <details class="trip-credits">
+            <summary>Photo credits</summary>
+            <ul>
+              <li><a href="https://commons.wikimedia.org/wiki/File:Taipei_skyline_at_dusk.jpg" target="_blank" rel="noopener noreferrer">Taipei skyline</a> by Debjyoti Bardhan, <a href="https://creativecommons.org/licenses/by/2.0/" target="_blank" rel="noopener noreferrer">CC BY 2.0</a>. Resized and cropped for display.</li>
+              <li><a href="https://commons.wikimedia.org/wiki/File:Hehuanshan_in_winter.jpg" target="_blank" rel="noopener noreferrer">Hehuanshan</a> by YangChen(TW), <a href="https://creativecommons.org/licenses/by/2.0/" target="_blank" rel="noopener noreferrer">CC BY 2.0</a>. Resized and cropped for display.</li>
+              <li><a href="https://commons.wikimedia.org/wiki/File:Yeliou_queen_rock_formation.JPG" target="_blank" rel="noopener noreferrer">Queen’s Head, Yehliu</a> by (WT-en) Ash rex, public domain. Resized and cropped for display.</li>
+              <li><a href="https://commons.wikimedia.org/wiki/File:Alishan_Taiwan_Alishan-Forest-Railway-03c.jpg" target="_blank" rel="noopener noreferrer">Alishan Forest Railway</a> by CEphoto, Uwe Aranas, <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 3.0</a>. Resized and cropped for display.</li>
+            </ul>
+          </details>
         </div>
       </section>
     </div>
