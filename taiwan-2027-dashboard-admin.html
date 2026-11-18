@@ -57,7 +57,7 @@
     form { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; }
     label { display: block; min-width: 0; font-weight: 600; }
     label span { color: var(--muted); font-weight: 400; }
-    input:not([type=checkbox]), textarea, select, button {
+    input:not([type=checkbox]), textarea, select, button, #edit-scope summary {
       min-height: 44px;
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -69,13 +69,28 @@
     textarea { resize: vertical; }
     button { padding: 8px 12px; font-weight: 650; cursor: pointer; }
     button:disabled { opacity: .65; cursor: default; }
+    .scope-caption { display: block; margin-bottom: 4px; font-weight: 600; }
+    #edit-scope summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 6px 10px;
+      list-style: none;
+    }
+    #edit-scope summary::-webkit-details-marker { display: none; }
+    #edit-scope summary::after { content: '▾'; }
+    #edit-scope[open] summary::after { transform: rotate(180deg); }
+    .scope-menu { margin-top: 4px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 8px; }
+    #edit-scope-all { width: 100%; margin: 4px 0; text-align: left; }
+    #edit-scope-options label { display: flex; align-items: center; gap: 8px; min-height: 40px; cursor: pointer; font-weight: 500; }
     .primary { background: var(--button); border-color: var(--button); color: #fff; justify-self: start; }
     .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     fieldset { min-inline-size: 0; margin: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; }
     legend { padding-inline: 4px; font-weight: 600; }
     #entry-groups { display: flex; flex-wrap: wrap; gap: 2px 14px; }
     #entry-groups label { display: flex; align-items: center; gap: 5px; min-height: 40px; font-weight: 500; }
-    #entry-groups input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
+    #entry-groups input, #edit-scope-options input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
     .help, .status { font-size: 13px; color: var(--muted); }
     .error { font-size: 13px; color: var(--error); }
     .error:empty, .status:empty { display: none; }
@@ -108,9 +123,16 @@
 
     <form id="entry-form" method="get" target="_blank" rel="noopener noreferrer">
       <h2 id="form-heading">Add entry</h2>
-      <label id="edit-scope-control" hidden>Edit scope
-        <select id="edit-scope"></select>
-      </label>
+      <div id="edit-scope-control" hidden>
+        <span class="scope-caption">Edit scope</span>
+        <details id="edit-scope">
+          <summary id="edit-scope-summary" aria-label="Edit scope: Select tabs"><span id="edit-scope-label">Select tabs</span></summary>
+          <div class="scope-menu">
+            <button id="edit-scope-all" type="button">Select all tabs</button>
+            <div id="edit-scope-options" role="group" aria-label="Tabs to edit"></div>
+          </div>
+        </details>
+      </div>
       <p id="edit-scope-help" class="help" hidden>Fields you change will be applied to the selected tabs.</p>
       <label>Item
         <input id="entry-item" maxlength="100" required>
@@ -158,6 +180,10 @@
     const groupsFieldset = document.querySelector('#entry-groups-fieldset');
     const scopeControl = document.querySelector('#edit-scope-control');
     const scope = document.querySelector('#edit-scope');
+    const scopeSummary = document.querySelector('#edit-scope-summary');
+    const scopeLabel = document.querySelector('#edit-scope-label');
+    const scopeOptions = document.querySelector('#edit-scope-options');
+    const selectAllScopes = document.querySelector('#edit-scope-all');
     const scopeHelp = document.querySelector('#edit-scope-help');
     const checks = [...document.querySelectorAll('#entry-groups input')];
     const item = document.querySelector('#entry-item');
@@ -256,18 +282,29 @@
     }
 
     function selectedScopes() {
-      return scope.value === 'all' ? scopes : scopes.filter(row => row.group === scope.value);
+      const checked = new Set([...scopeOptions.querySelectorAll('input:checked')].map(input => input.value));
+      return scopes.filter(row => checked.has(row.group));
     }
 
     function updateScope() {
       const targets = selectedScopes();
-      const next = targets.find(row => row === editing) ?? targets[0] ?? null;
+      const next = targets.find(row => row === editing) ?? targets[0] ?? editing;
       if (next !== editing) {
         entryFields.forEach((field, index) => { field.value = next?.values[index] ?? ''; });
         initialFields = entryFields.map(field => field.value);
       }
       editing = next;
-      scopeHelp.hidden = scope.value !== 'all';
+      let label = 'Select tabs';
+      if (targets.length === 1) label = groupNames.get(targets[0].group);
+      if (targets.length > 1) label = targets.length + ' tabs selected';
+      scopeLabel.textContent = label;
+      scopeSummary.setAttribute('aria-label', 'Edit scope: ' + label);
+      selectAllScopes.disabled = targets.length === scopes.length;
+      submitEntry.disabled = scopes.length > 0 && targets.length === 0;
+      scopeHelp.hidden = !scopes.length || targets.length === 1;
+      scopeHelp.textContent = targets.length
+        ? 'Fields you change will be applied to the selected tabs.'
+        : 'Select at least one tab to continue.';
       const record = editing?.record;
       groupsFieldset.hidden = Boolean(record && (record.original || targets.length !== scopes.length));
       for (const check of checks) check.checked = record?.groups.includes(check.value) ?? false;
@@ -285,10 +322,17 @@
       form.reset();
       editing = null;
       scopes = entry ?? [];
-      const options = scopes.map(row => new Option(groupNames.get(row.group), row.group));
-      if (scopes.length === 2) options.push(new Option('Both tabs', 'all'));
-      if (scopes.length === 3) options.push(new Option('All 3 tabs', 'all'));
-      scope.replaceChildren(...options);
+      scope.open = false;
+      scopeOptions.replaceChildren(...scopes.map((row, index) => {
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.value = row.group;
+        input.checked = index === 0;
+        const option = document.createElement('label');
+        option.append(input, groupNames.get(row.group));
+        return option;
+      }));
+      selectAllScopes.hidden = scopes.length < 2;
       scopeControl.hidden = !entry;
       heading.textContent = entry ? 'Edit entry' : 'Add entry';
       editEntry.value = scopes[0]?.id ?? '';
@@ -311,7 +355,20 @@
       setEditor(entries.get(editEntry.value) ?? null);
       item.focus();
     });
-    scope.addEventListener('change', updateScope);
+    scopeOptions.addEventListener('change', updateScope);
+    selectAllScopes.addEventListener('click', () => {
+      for (const input of scopeOptions.querySelectorAll('input')) input.checked = true;
+      updateScope();
+      scopeSummary.focus();
+    });
+    document.addEventListener('click', event => {
+      if (scope.open && !scope.contains(event.target)) scope.open = false;
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key !== 'Escape' || !scope.open) return;
+      scope.open = false;
+      scopeSummary.focus();
+    });
 
     function buildScopedEdit(values, selected) {
       const columns = [];
@@ -344,6 +401,11 @@
 
     form.addEventListener('submit', event => {
       error.textContent = '';
+      if (scopes.length && !selectedScopes().length) {
+        event.preventDefault();
+        scopeSummary.focus();
+        return;
+      }
       const selected = checks.filter(check => check.checked).map(check => check.value);
       if (!groupsFieldset.hidden && !selected.length) {
         event.preventDefault();
