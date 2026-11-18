@@ -759,6 +759,7 @@
     const textCollator = new Intl.Collator('en', { sensitivity: 'base', numeric: true });
     const tabs = [];
     const panels = [];
+    let lastBudgetTab = 0;
     const updateTables = [];
 
     function element(tag, content = '', className = '') {
@@ -1037,7 +1038,9 @@
         const openFilter = panels[position].querySelector('.purchase-filter[open]');
         if (!selected && openFilter) openFilter.open = false;
       });
-      document.querySelector('#shared-status').hidden = tabs[index].id === 'tab-itinerary';
+      const isItinerary = tabs[index].id === 'tab-itinerary';
+      if (!isItinerary) lastBudgetTab = index;
+      document.querySelector('#shared-status').hidden = isItinerary;
       if (focus) tabs[index].focus();
       if (tabList.getBoundingClientRect().top <= 0) window.scrollTo(0, 0);
     }
@@ -1082,7 +1085,11 @@
     });
 
     addTab('itinerary', 'Itinerary', document.querySelector('#panel-itinerary'));
-    activateTab(location.hash === '#itinerary' ? tabs.length - 1 : 0);
+    function openLinkedTab() {
+      activateTab(location.hash === '#itinerary' ? tabs.length - 1 : lastBudgetTab);
+    }
+    openLinkedTab();
+    window.addEventListener('hashchange', openLinkedTab);
 
     document.addEventListener('pointerdown', event => {
       const openFilter = document.querySelector('.purchase-filter[open]');
